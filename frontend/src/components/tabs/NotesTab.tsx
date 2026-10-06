@@ -3,53 +3,19 @@ import { useEffect, useMemo, useState } from 'react'
 import { Download, FileArchive, Plus, Printer, Search, Trash2 } from 'lucide-react'
 
 import { exportNotesHtml, exportNotesMarkdown, exportNotesObsidian } from '../../services/api'
-import { resolveDirectReference } from '../../services/directReference'
 import { useStudyStore } from '../../stores/useStudyStore'
 import { useUIStore } from '../../stores/useUIStore'
 import { deriveNavigationTarget } from '../../utils/recordKey'
 import type { Note } from '../../types/study'
 import { useOpenReaderForVerse } from './useOpenReaderForVerse'
+import { NoteContentRenderer } from '../study/NoteContentRenderer'
 
 const TAG_RE = /#([a-zA-Z0-9_-]+)/g
-const NOTE_BODY_TOKEN_RE = /(\[\[[^\]]+\]\]|#[a-zA-Z0-9_-]+)/g
 
 function extractTags(text: string): string[] {
   const tags = new Set<string>()
   for (const m of text.matchAll(TAG_RE)) tags.add(m[1])
   return [...tags]
-}
-
-/** Renders `[[BG 18.66]]`-style wikilinks as clickable gold links (resolved
- * through the same direct-reference parser the `@` sidebar search and
- * Parallel Scripture panel use — there's no separate "navigate_to_reference"
- * command) and plain `#hashtag` tokens as gold non-link spans, matching
- * v2's note-body rendering. Used for both the detail pane and list previews. */
-function renderNoteBody(content: string, onOpenVerse: (ref: string) => void): React.ReactNode {
-  const parts = content.split(NOTE_BODY_TOKEN_RE)
-  return parts.map((part, i) => {
-    const wikiMatch = part.match(/^\[\[(.+)\]\]$/)
-    if (wikiMatch) {
-      const ref = wikiMatch[1]
-      return (
-        <button
-          key={i}
-          type="button"
-          onClick={() => onOpenVerse(ref)}
-          className="text-amber-400 hover:text-amber-300 underline underline-offset-2 font-medium"
-        >
-          {ref}
-        </button>
-      )
-    }
-    if (/^#[a-zA-Z0-9_-]+$/.test(part)) {
-      return (
-        <span key={i} className="text-amber-500/80 font-medium">
-          {part}
-        </span>
-      )
-    }
-    return <span key={i}>{part}</span>
-  })
 }
 
 export function NotesTab() {
@@ -96,12 +62,6 @@ export function NotesTab() {
   const handleOpenInReader = (verseId: string) => {
     const target = deriveNavigationTarget(verseId)
     if (target) void openReaderForVerse(target.bookKey, target.chapterKey, verseId)
-  }
-
-  const handleOpenWikiLink = (ref: string) => {
-    void resolveDirectReference(ref).then((resolved) => {
-      if (resolved) handleOpenInReader(resolved.recordKey)
-    })
   }
 
   const handleNewStandaloneNote = async () => {
@@ -281,9 +241,9 @@ export function NotesTab() {
                   <Trash2 size={13} /> Delete
                 </button>
               </div>
-              <p className="font-serif text-[15px] leading-relaxed text-neutral-200 whitespace-pre-wrap">
-                {selected.contentText ? renderNoteBody(selected.contentText, handleOpenWikiLink) : '(empty)'}
-              </p>
+              <div className="text-[15px] leading-relaxed text-neutral-200 mt-4">
+                <NoteContentRenderer content={selected.contentText} />
+              </div>
             </div>
           )}
         </div>

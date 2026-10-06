@@ -8,7 +8,7 @@ function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text
 }
 
-function CitationLink({ citation, children }: { citation: ResolvedCitation; children: ReactNode }) {
+export function CitationLink({ citation, children }: { citation: ResolvedCitation; children: ReactNode }) {
   const openReaderForVerse = useOpenReaderForVerse()
   const [preview, setPreview] = useState<string | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
@@ -22,7 +22,7 @@ function CitationLink({ citation, children }: { citation: ResolvedCitation; chil
     getVerseRecord(citation.recordKey)
       .then((record) => {
         const text = record?.translation || record?.purports
-        setPreview(text ? truncate(text, 160) : 'Not available in this corpus.')
+        setPreview(text ? truncate(text, 260) : 'Not available in this corpus.')
       })
       .catch(() => setPreview('Not available in this corpus.'))
       .finally(() => setLoadingPreview(false))
@@ -37,21 +37,30 @@ function CitationLink({ citation, children }: { citation: ResolvedCitation; chil
     })
   }
 
+  const isAtMention = citation.raw.startsWith('@')
+
   return (
     <span className="relative inline-block" onMouseEnter={handleMouseEnter} onMouseLeave={() => setHovering(false)}>
       <button
         type="button"
         onClick={handleClick}
-        className={`underline decoration-dotted underline-offset-2 font-medium cursor-pointer ${
-          missing ? 'text-neutral-500 cursor-default' : 'text-amber-400 hover:text-amber-300'
-        }`}
+        className={`inline-flex items-center font-medium cursor-pointer transition-colors ${
+          isAtMention
+            ? 'px-1 py-0.2 rounded bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 border border-amber-500/30'
+            : 'underline decoration-dotted underline-offset-2 text-amber-400 hover:text-amber-300'
+        } ${missing ? 'opacity-50 cursor-default' : ''}`}
         title={missing ? 'Not available in this corpus' : `Open ${citation.raw} in new tab`}
       >
         {children}
       </button>
       {hovering && (
-        <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs leading-relaxed text-neutral-300 shadow-xl pointer-events-none">
-          {loadingPreview ? 'Loading…' : preview}
+        <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 rounded-lg border border-neutral-700 bg-neutral-900/95 p-3 text-xs leading-relaxed text-neutral-200 shadow-2xl pointer-events-none backdrop-blur-md">
+          <div className="font-semibold text-amber-400 mb-1 pb-1 border-b border-neutral-800">
+            {citation.label || citation.raw}
+          </div>
+          <div className="text-neutral-300">
+            {loadingPreview ? 'Loading verse preview…' : preview}
+          </div>
         </span>
       )}
     </span>

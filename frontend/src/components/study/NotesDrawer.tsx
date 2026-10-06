@@ -1,8 +1,10 @@
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import Underline from '@tiptap/extension-underline'
+import Highlight from '@tiptap/extension-highlight'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Bold, Italic, List, ListOrdered, Quote, X } from 'lucide-react'
+import { AtSign, Bold, Code, Italic, List, ListOrdered, Quote, Underline as UnderlineIcon, X } from 'lucide-react'
 
 import { useStudyStore } from '../../stores/useStudyStore'
 import { useNavigationStore } from '../../stores/useNavigationStore'
@@ -56,6 +58,8 @@ export function NotesDrawer({ target, onClose }: { target: NotesDrawerTarget; on
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [loaded, setLoaded] = useState(false)
   const [title, setTitle] = useState('')
+  const [atRefOpen, setAtRefOpen] = useState(false)
+  const [atRefInput, setAtRefInput] = useState('')
   const saveTimer = useRef<number | null>(null)
   const titleRef = useRef('')
   titleRef.current = title
@@ -79,7 +83,11 @@ export function NotesDrawer({ target, onClose }: { target: NotesDrawerTarget; on
   }
 
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit,
+      Underline,
+      Highlight.configure({ multicolor: true }),
+    ],
     content: '',
     onUpdate: ({ editor }) => {
       setSaveState('saving')
@@ -169,7 +177,7 @@ export function NotesDrawer({ target, onClose }: { target: NotesDrawerTarget; on
         </div>
 
         {editor && (
-          <div className="flex items-center gap-0.5 px-3 py-2 border-b border-neutral-800">
+          <div className="flex items-center gap-1 px-3 py-2 border-b border-neutral-800 bg-neutral-950/40 relative">
             <ToolbarButton
               onClick={() => editor.chain().focus().toggleBold().run()}
               active={editor.isActive('bold')}
@@ -184,6 +192,33 @@ export function NotesDrawer({ target, onClose }: { target: NotesDrawerTarget; on
             >
               <Italic size={15} />
             </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+              active={editor.isActive('underline')}
+              title="Underline (Ctrl+U)"
+            >
+              <UnderlineIcon size={15} />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleCode().run()}
+              active={editor.isActive('code')}
+              title="Inline code"
+            >
+              <Code size={15} />
+            </ToolbarButton>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleHighlight({ color: '#facc15' }).run()}
+              className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-colors ${
+                editor.isActive('highlight')
+                  ? 'bg-amber-400 text-neutral-950 ring-1 ring-amber-300'
+                  : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+              }`}
+              title="Highlight text"
+            >
+              H
+            </button>
+            <div className="w-px h-4 bg-neutral-800 mx-1" />
             <ToolbarButton
               onClick={() => editor.chain().focus().toggleBulletList().run()}
               active={editor.isActive('bulletList')}
@@ -205,6 +240,72 @@ export function NotesDrawer({ target, onClose }: { target: NotesDrawerTarget; on
             >
               <Quote size={15} />
             </ToolbarButton>
+            <div className="w-px h-4 bg-neutral-800 mx-1" />
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setAtRefOpen(!atRefOpen)}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-colors ${
+                  atRefOpen ? 'bg-amber-400 text-neutral-950' : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+                }`}
+                title="Insert Scripture Reference (@Ref)"
+              >
+                <AtSign size={13} /> Ref
+              </button>
+
+              {atRefOpen && (
+                <div className="absolute top-full right-0 mt-1 z-30 w-72 rounded-lg border border-neutral-700 bg-neutral-900 p-3 shadow-2xl">
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-neutral-800">
+                    <span className="text-xs font-semibold text-amber-400">Insert Scripture Citation</span>
+                    <button
+                      type="button"
+                      onClick={() => setAtRefOpen(false)}
+                      className="text-neutral-500 hover:text-neutral-300"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={atRefInput}
+                    onChange={(e) => setAtRefInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && atRefInput.trim()) {
+                        const clean = atRefInput.trim().replace(/^@/, '')
+                        editor.chain().focus().insertContent(`@${clean} `).run()
+                        setAtRefOpen(false)
+                        setAtRefInput('')
+                      }
+                    }}
+                    autoFocus
+                    placeholder="e.g. BG 4.8, SB 4.2.2"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1.5 text-xs text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50 mb-3"
+                  />
+                  <div className="flex items-center justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setAtRefOpen(false)}
+                      className="px-2.5 py-1 rounded text-xs text-neutral-400 hover:bg-neutral-800"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!atRefInput.trim()) return
+                        const clean = atRefInput.trim().replace(/^@/, '')
+                        editor.chain().focus().insertContent(`@${clean} `).run()
+                        setAtRefOpen(false)
+                        setAtRefInput('')
+                      }}
+                      className="px-2.5 py-1 rounded bg-amber-500 text-neutral-950 font-medium text-xs hover:bg-amber-400"
+                    >
+                      Insert @Ref
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

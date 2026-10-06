@@ -12,32 +12,36 @@ export interface ResolvedCitation {
 
 const BOOK_NAMES = [
   'CC\\.?\\s+(?:Ādi|Adi|Madhya|Antya)(?:-l[iī]l[aā])?,?',
-  'Caitanya-carit[aā]m[rṛ]ta,?\\s*[([\\[]?\\s*(?:Ādi|Adi|Madhya|Antya)(?:-l[iī]l[aā])?,?',
+  'CC\\.?,?',
+  'Caitanya-carit[aā]m[rṛ]ta,?\\s*[([\\\\\\[]?\\s*(?:Ādi|Adi|Madhya|Antya)(?:-l[iī]l[aā])?,?',
   'Bhagavad-g[iī]t[aā](?:\\s+As\\s+It\\s+Is)?,?',
-  'Bg\\.?',
+  'Bg\\.?,?',
   'Śrīmad\\s*-\\s*Bhāgavatam,?',
   'Srimad\\s*-\\s*Bhagavatam,?',
   'Bhāgavatam,?',
-  'SB\\.?',
+  'SB\\.?,?',
   'Śrī\\s+Īśopaniṣad,?',
   'Īśopaniṣad,?',
   'Isopanisad,?',
-  'Īśo\\.?',
-  'Iso\\.?',
+  'Īśo\\.?,?',
+  'Iso\\.?,?',
   'The\\s+Nectar\\s+of\\s+Instruction,?',
   'Nectar\\s+of\\s+Instruction,?',
-  'NOI\\.?',
+  'NOI\\.?,?',
   'The\\s+Nectar\\s+of\\s+Devotion,?',
   'Nectar\\s+of\\s+Devotion,?',
-  'NOD\\.?',
+  'NOD\\.?,?',
   'Teachings\\s+of\\s+Lord\\s+Caitanya,?',
-  'TLC\\.?',
+  'TLC\\.?,?',
   'Brahma-sa[mṁ]hit[aā],?',
-  'Bs\\.',
+  'Bs\\.?,?',
+  'SPS\\.?,?',
+  'Srila\\s+Prabhupada\\s+Slokas,?',
+  'Śrīla\\s+Prabhupāda\\s+Ślokas,?',
 ].join('|')
 
 const CITATION_RE = new RegExp(
-  `(?<![\\p{L}\\p{N}])(${BOOK_NAMES})\\s*[([\\[]?\\s*(?:(Invocation|Introduction)|(?:Chapter\\s+|Mantra\\s+|Text\\s+|Verse\\s+)?(\\d+)(?:\\s*[.:]\\s*(\\d+))?(?:\\s*[.:]\\s*(\\d+))?(?:\\s*[-–]\\s*(\\d+))?)\\s*[)\\]]?`,
+  `(?<![\\p{L}\\p{N}])(?:@)?(${BOOK_NAMES})\\s*[([\\\\\\[]?\\s*(?:(Invocation|Introduction)|(?:Chapter\\s+|Mantra\\s+|Text\\s+|Verse\\s+)?(\\d+)(?:\\s*[.:]\\s*(\\d+))?(?:\\s*[.:]\\s*(\\d+))?(?:\\s*[-–]\\s*(\\d+))?)\\s*[)\\\\\\]]?`,
   'giu',
 )
 
@@ -95,7 +99,7 @@ function resolveOne(
         ? 'ANTYA'
         : bt.includes('adi') || bt.includes('ādi')
           ? 'DI'
-          : null
+          : 'MADHYA'
     if (!bookKey || !n2) return null
     const verseSuffix = n4 ? `${n2}-${n4}` : n2
     const { chapterKey, recordKey } = buildKey(bookKey, n1, verseSuffix)
@@ -117,11 +121,17 @@ function resolveOne(
     return { raw, bookKey: 'SB', chapterKey, recordKey, label: raw }
   }
 
-  if (bt.startsWith('brahma-sa') || bt === 'bs.') {
+  if (bt.startsWith('brahma-sa') || bt.startsWith('bs')) {
     if (!n2) return null
     const verseSuffix = n4 ? `${n2}-${n4}` : n2
     const { chapterKey, recordKey } = buildKey('BS', n1, verseSuffix)
     return { raw, bookKey: 'BS', chapterKey, recordKey, label: raw }
+  }
+
+  if (bt.startsWith('sps') || bt.includes('prabhupada slokas') || bt.includes('prabhupāda ślokas')) {
+    if (!n2) return null
+    const { chapterKey, recordKey } = buildKey('SPS', n1, n2)
+    return { raw, bookKey: 'SPS', chapterKey, recordKey, label: raw }
   }
 
   if (bt.startsWith('noi') || bt.includes('nectar of instruction')) {

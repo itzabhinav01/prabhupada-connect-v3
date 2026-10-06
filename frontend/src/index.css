@@ -276,9 +276,27 @@ body {
   background-color: var(--t-600);
 }
 
-/* Minimal content styling for the TipTap realizations editor. */
+/* Content styling for the TipTap realizations editor. */
 .notes-editor .ProseMirror p {
   margin: 0 0 0.75em;
+}
+.notes-editor .ProseMirror h1 {
+  font-size: 1.35em;
+  font-weight: 700;
+  margin: 0.8em 0 0.4em;
+  color: var(--text-primary);
+}
+.notes-editor .ProseMirror h2 {
+  font-size: 1.2em;
+  font-weight: 700;
+  margin: 0.7em 0 0.35em;
+  color: var(--text-primary);
+}
+.notes-editor .ProseMirror h3 {
+  font-size: 1.05em;
+  font-weight: 600;
+  margin: 0.6em 0 0.3em;
+  color: var(--text-primary);
 }
 .notes-editor .ProseMirror ul,
 .notes-editor .ProseMirror ol {
@@ -292,9 +310,61 @@ body {
   list-style: decimal;
 }
 .notes-editor .ProseMirror blockquote {
-  border-left: 2px solid var(--t-accent-500);
+  border-left: 3px solid var(--t-accent-500);
   padding-left: 1em;
   margin: 0 0 0.75em;
   color: var(--t-300);
   font-style: italic;
+  background-color: color-mix(in srgb, var(--accent-color) 5%, transparent);
+  border-radius: 0 4px 4px 0;
+}
+.notes-editor .ProseMirror u {
+  text-decoration: underline;
+}
+.notes-editor .ProseMirror mark {
+  background-color: rgba(250, 204, 21, 0.35);
+  color: inherit;
+  padding: 0.1em 0.25em;
+  border-radius: 3px;
+}
+.notes-editor .ProseMirror a {
+  color: var(--t-accent-400);
+  text-decoration: underline;
+}
+.notes-editor .ProseMirror code {
+  background-color: var(--t-900);
+  border: 1px solid var(--t-800);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.88em;
+}
+.notes-editor .ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0.85em 0;
+  overflow: hidden;
+  border-radius: 4px;
+}
+.notes-editor .ProseMirror td,
+.notes-editor .ProseMirror th {
+  min-width: 1.5em;
+  border: 1px solid var(--t-800);
+  padding: 6px 10px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+.notes-editor .ProseMirror th {
+  font-weight: 600;
+  text-align: left;
+  background-color: var(--t-900);
+}
+.notes-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--t-600);
+  pointer-events: none;
+  height: 0;
 }
