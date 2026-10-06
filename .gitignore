@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build outputs
+frontend/dist/
+frontend/dist-ssr/
+src-tauri/target/
+
+# Environment & local configuration
+.env
+.env.local
+.env.*.local
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Stray / temporary files
+install_log.txt
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# Ignore stray root database copy (canonical corpus DB is at database/prabhupada_corpus.db)
+/prabhupada_corpus.db
+/prabhupada_corpus.db-shm
+/prabhupada_corpus.db-wal
+database/*.db-shm
+database/*.db-wal

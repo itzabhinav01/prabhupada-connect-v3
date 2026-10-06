@@ -1,0 +1,300 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------
+   Theming engine.
+
+   The app was built entirely on Tailwind's stock `neutral-*` / `amber-*`
+   palettes (bg-neutral-950, text-neutral-300, border-neutral-800,
+   text-amber-500, etc.) across every component. Rather than rewrite every
+   className in every file for four themes, this remaps those two palettes
+   to CSS custom properties via Tailwind v4's `@theme`, then redefines the
+   properties per `[data-theme]`. Every existing utility class re-themes
+   automatically — `bg-neutral-950` literally means "this theme's canvas
+   color", not a fixed dark shade, everywhere it's already used.
+
+   The `100`-`950` numbering is kept purely as an ordering convention
+   (950 = canvas/darkest-chrome slot, 100 = primary-text slot in dark mode);
+   each theme is free to invert that lightness relationship as needed.
+   --------------------------------------------------------------------- */
+@theme {
+  --color-neutral-100: var(--t-100);
+  --color-neutral-200: var(--t-200);
+  --color-neutral-300: var(--t-300);
+  --color-neutral-400: var(--t-400);
+  --color-neutral-500: var(--t-500);
+  --color-neutral-600: var(--t-600);
+  --color-neutral-700: var(--t-700);
+  --color-neutral-800: var(--t-800);
+  --color-neutral-900: var(--t-900);
+  --color-neutral-950: var(--t-950);
+
+  --color-amber-300: var(--t-accent-300);
+  --color-amber-400: var(--t-accent-400);
+  --color-amber-500: var(--t-accent-500);
+}
+
+:root {
+  color-scheme: dark;
+  --text-brightness: 100%;
+  --effective-brightness: var(--text-brightness);
+}
+
+/* Dark (default) — deep obsidian/slate, warm gold accent. */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --effective-brightness: var(--text-brightness);
+  --t-950: #0f172a;
+  --t-900: #1a2438;
+  --t-800: #263349;
+  --t-700: #334155;
+  --t-600: #64748b;
+  --t-500-raw: #94a3b8;
+  --t-400-raw: #b6c4d6;
+  --t-300-raw: #cbd5e1;
+  --t-200-raw: #e2e8f0;
+  --t-100-raw: #f8fafc;
+  --t-accent-500: #f59e0b;
+  --t-accent-400: #fbbf24;
+  --t-accent-300: #fcd34d;
+  --t-nav-bg: #0f172a;
+}
+
+/* Midnight OLED — pure #000000 canvas, warm ivory text, temple saffron gold. */
+[data-theme="oled"] {
+  color-scheme: dark;
+  --effective-brightness: var(--text-brightness);
+  --t-950: #000000;
+  --t-900: #0d0d11;
+  --t-800: #1f1f26;
+  --t-700: #32323d;
+  --t-600: #71717a;
+  --t-500-raw: #a1a1aa;
+  --t-400-raw: #c4c4cc;
+  --t-300-raw: #dcdce2;
+  --t-200-raw: #ededf0;
+  --t-100-raw: #fafafa;
+  --t-accent-500: #f59e0b;
+  --t-accent-400: #fbbf24;
+  --t-accent-300: #fcd34d;
+  --t-nav-bg: #050507;
+}
+
+/* Light — crisp scripture white, deep ink text, high-contrast surfaces, crimson accent. */
+[data-theme="light"] {
+  color-scheme: light;
+  --effective-brightness: 100%;
+  --t-950: #ffffff;
+  --t-900: #f1f5f9;
+  --t-800: #cbd5e1;
+  --t-700: #94a3b8;
+  --t-600: #475569;
+  --t-500-raw: #334155;
+  --t-400-raw: #1e293b;
+  --t-300-raw: #172033;
+  --t-200-raw: #0f172a;
+  --t-100-raw: #090d16;
+  --t-accent-500: #9f1239;
+  --t-accent-400: #881337;
+  --t-accent-300: #881337;
+  --t-nav-bg: #f8fafc;
+}
+
+/* Cream Sepia — warm parchment, deep espresso ink, rich terracotta accent. */
+[data-theme="sepia"] {
+  color-scheme: light;
+  --effective-brightness: 100%;
+  --t-950: #fbf0d9;
+  --t-900: #efe2c4;
+  --t-800: #d5c199;
+  --t-700: #bfa678;
+  --t-600: #6b5335;
+  --t-500-raw: #574126;
+  --t-400-raw: #46331b;
+  --t-300-raw: #382712;
+  --t-200-raw: #2b1d0c;
+  --t-100-raw: #1e1307;
+  --t-accent-500: #9a3412;
+  --t-accent-400: #7c2d12;
+  --t-accent-300: #7c2d12;
+  --t-nav-bg: #f5e6c8;
+}
+
+/* Warm Sandalwood — temple sandalwood cream, deep walnut text, kumkum vermilion accent. */
+[data-theme="sandalwood"] {
+  color-scheme: light;
+  --effective-brightness: 100%;
+  --t-950: #f6efe2;
+  --t-900: #ebe1ce;
+  --t-800: #d6c7ac;
+  --t-700: #b8a483;
+  --t-600: #635139;
+  --t-500-raw: #4f3f29;
+  --t-400-raw: #3e301d;
+  --t-300-raw: #312515;
+  --t-200-raw: #241a0d;
+  --t-100-raw: #181006;
+  --t-accent-500: #b45309;
+  --t-accent-400: #92400e;
+  --t-accent-300: #78350f;
+  --t-nav-bg: #efe5d4;
+}
+
+/* Forest Green — ashram evergreen, soft mist text, gold accent. */
+[data-theme="forest"] {
+  color-scheme: dark;
+  --effective-brightness: var(--text-brightness);
+  --t-950: #0d1f18;
+  --t-900: #132a21;
+  --t-800: #1e3a2e;
+  --t-700: #2a4c3c;
+  --t-600: #6c9282;
+  --t-500-raw: #95b5a7;
+  --t-400-raw: #b4cec2;
+  --t-300-raw: #cbe0d6;
+  --t-200-raw: #dcebe4;
+  --t-100-raw: #eef6f2;
+  --t-accent-500: #d4a72c;
+  --t-accent-400: #e5be52;
+  --t-accent-300: #f0d27a;
+  --t-nav-bg: #0a1913;
+}
+
+/* Yamunā Dusk — deep devotional indigo-blue, pearl text, lotus gold accent. */
+[data-theme="ocean"] {
+  color-scheme: dark;
+  --effective-brightness: var(--text-brightness);
+  --t-950: #091526;
+  --t-900: #102038;
+  --t-800: #1c3252;
+  --t-700: #2b4770;
+  --t-600: #6c8ab5;
+  --t-500-raw: #94afd4;
+  --t-400-raw: #b5cae6;
+  --t-300-raw: #cde0f5;
+  --t-200-raw: #e2eefb;
+  --t-100-raw: #f2f7fd;
+  --t-accent-500: #f59e0b;
+  --t-accent-400: #fbbf24;
+  --t-accent-300: #fcd34d;
+  --t-nav-bg: #07111f;
+}
+
+/* OLED text-brightness: dims the "main reading text" slots (100-500) toward
+ * the canvas color on dark themes without washing out light themes. */
+:root,
+[data-theme] {
+  --t-100: color-mix(in srgb, var(--t-100-raw) var(--effective-brightness), var(--t-950));
+  --t-200: color-mix(in srgb, var(--t-200-raw) var(--effective-brightness), var(--t-950));
+  --t-300: color-mix(in srgb, var(--t-300-raw) var(--effective-brightness), var(--t-950));
+  --t-400: color-mix(in srgb, var(--t-400-raw) var(--effective-brightness), var(--t-950));
+  --t-500: color-mix(in srgb, var(--t-500-raw) var(--effective-brightness), var(--t-950));
+
+  --text-primary: var(--t-100);
+  --bg-canvas: var(--t-950);
+  --reading-line-height: 1.75;
+  --accent-color: var(--t-accent-400);
+}
+
+/* Milestone 3: dignified scripture section headers (SYNONYMS / TRANSLATION /
+ * PURPORT), matching vedabase.io's centered, letter-spaced gold labels. */
+.scripture-section-header {
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent-color);
+  margin: 0 0 0.75rem;
+}
+
+/* A śloka quoted mid-purport (from another scripture, in 4-line transliteration). */
+.purport-verse {
+  white-space: pre-line;
+  text-align: center;
+  font-style: italic;
+  line-height: 1.95;
+  margin: 1.35rem auto;
+  padding: 0.5rem 1rem;
+  max-width: 36rem;
+  color: var(--text-primary);
+}
+
+/* Dialogue turns ("Reporter: ...", "Śrīla Prabhupāda: ..."). */
+.speaker-name {
+  font-weight: 600;
+  color: var(--accent-color);
+}
+
+/* In-page find (Ctrl+F) — via the CSS Custom Highlight API, so these
+ * ::highlight() rules apply to Range objects registered in JS without any
+ * DOM mutation (see useHighlightFindMatches.ts). */
+::highlight(inpage-find) {
+  background-color: color-mix(in srgb, var(--accent-color) 35%, transparent);
+  color: var(--text-primary);
+}
+::highlight(inpage-find-active) {
+  background-color: var(--accent-color);
+  color: var(--t-950);
+}
+
+/* A chapter/section subheading embedded in purport/narrative prose (e.g. "JSD 5.3: Making Friends with the Mind"). */
+.prose-subheading {
+  font-size: 1.12em;
+  font-weight: 700;
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+  border-left: 3px solid var(--accent-color);
+  padding: 0.5rem 0.9rem;
+  margin: 1.75rem 0 0.9rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  letter-spacing: 0.015em;
+  line-height: 1.4;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-canvas);
+}
+
+/* Thin, unobtrusive scrollbars for the sidebar and reader canvas. */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--t-700) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: var(--t-700);
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: var(--t-600);
+}
+
+/* Minimal content styling for the TipTap realizations editor. */
+.notes-editor .ProseMirror p {
+  margin: 0 0 0.75em;
+}
+.notes-editor .ProseMirror ul,
+.notes-editor .ProseMirror ol {
+  margin: 0 0 0.75em;
+  padding-left: 1.5em;
+}
+.notes-editor .ProseMirror ul {
+  list-style: disc;
+}
+.notes-editor .ProseMirror ol {
+  list-style: decimal;
+}
+.notes-editor .ProseMirror blockquote {
+  border-left: 2px solid var(--t-accent-500);
+  padding-left: 1em;
+  margin: 0 0 0.75em;
+  color: var(--t-300);
+  font-style: italic;
+}
