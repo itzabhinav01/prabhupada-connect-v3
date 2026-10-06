@@ -76,6 +76,33 @@ fn app_health_check(state: tauri::State<AppState>) -> Result<String, String> {
     Ok(summary)
 }
 
+#[tauri::command]
+fn window_minimize(window: tauri::Window) -> Result<(), String> {
+    window.minimize().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn window_toggle_maximize(window: tauri::Window) -> Result<bool, String> {
+    let is_max = window.is_maximized().map_err(|e| e.to_string())?;
+    if is_max {
+        window.unmaximize().map_err(|e| e.to_string())?;
+        Ok(false)
+    } else {
+        window.maximize().map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+}
+
+#[tauri::command]
+fn window_close(window: tauri::Window) -> Result<(), String> {
+    window.close().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn window_is_maximized(window: tauri::Window) -> Result<bool, String> {
+    window.is_maximized().map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -156,6 +183,10 @@ pub fn run() {
             search_imported_books,
             upsert_synced_highlight,
             insert_history_if_absent,
+            window_minimize,
+            window_toggle_maximize,
+            window_close,
+            window_is_maximized,
         ])
         .setup(|app| {
             let corpus_db_path = db::resolve_corpus_db_path(app.handle())?;

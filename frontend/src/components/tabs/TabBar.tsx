@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import { Bookmark, Clock, FileText, Globe, Highlighter, HelpCircle, Library, Plus, Search, Settings, StickyNote, X } from 'lucide-react'
 
 import { ReaderMoreMenu } from '../layout/ReaderMoreMenu'
+import { WindowControls } from '../layout/WindowControls'
 import { useTabStore, type Tab, type TabType } from '../../stores/useTabStore'
 
 const TAB_ICONS: Record<TabType, ComponentType<{ size?: number; className?: string }>> = {
@@ -66,19 +67,24 @@ export function TabBar() {
   const openUtilityTab = useTabStore((s) => s.openUtilityTab)
 
   return (
-    <div className="flex items-stretch h-9 bg-neutral-950 border-b border-neutral-800 overflow-x-auto scrollbar-thin shrink-0">
-      {tabs.map((tab) => (
-        <TabItem key={tab.id} tab={tab} isActive={tab.id === activeTabId} />
-      ))}
-      <button
-        type="button"
-        onClick={openLibraryTab}
-        className="shrink-0 flex items-center justify-center w-9 text-neutral-500 hover:bg-neutral-900 hover:text-neutral-200"
-        title="New tab (Ctrl+T)"
-      >
-        <Plus size={14} />
-      </button>
-      <div className="ml-auto flex items-center shrink-0 border-l border-neutral-800">
+    <div className="flex items-stretch h-9 bg-neutral-950 border-b border-neutral-800 shrink-0 select-none">
+      <div className="flex items-stretch flex-1 min-w-0 overflow-x-auto scrollbar-none" data-tauri-drag-region>
+        {tabs.map((tab) => (
+          <TabItem key={tab.id} tab={tab} isActive={tab.id === activeTabId} />
+        ))}
+        <button
+          type="button"
+          onClick={openLibraryTab}
+          className="shrink-0 flex items-center justify-center w-9 text-neutral-500 hover:bg-neutral-900 hover:text-neutral-200"
+          title="New tab (Ctrl+T)"
+        >
+          <Plus size={14} />
+        </button>
+        {/* Window drag area spanning the remaining space of the tab bar */}
+        <div data-tauri-drag-region className="flex-1 min-w-4 h-full cursor-default" />
+      </div>
+
+      <div className="flex items-center shrink-0 border-l border-neutral-800">
         <button
           type="button"
           onClick={() => openSearchTab('')}
@@ -103,9 +109,10 @@ export function TabBar() {
         >
           <Settings size={15} />
         </button>
-        <div className="px-1">
+        <div className="px-1 flex items-center">
           <ReaderMoreMenu />
         </div>
+        <WindowControls />
       </div>
     </div>
   )

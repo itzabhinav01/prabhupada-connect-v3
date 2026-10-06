@@ -443,7 +443,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: { collapsed: boolean; 
 
   if (collapsed) {
     return (
-      <div className="w-10 shrink-0 border-r border-neutral-800 bg-[var(--t-nav-bg)] flex flex-col items-center py-3">
+      <div className="w-10 shrink-0 border-r border-neutral-800 bg-[var(--t-nav-bg)] flex flex-col items-center py-3" data-tauri-drag-region>
         <button
           type="button"
           onClick={onToggleCollapsed}
@@ -466,8 +466,8 @@ export function Sidebar({ collapsed, onToggleCollapsed }: { collapsed: boolean; 
 
   return (
     <div className="w-64 shrink-0 border-r border-neutral-800 bg-[var(--t-nav-bg)] flex flex-col h-full">
-      <div className="flex items-center justify-between px-3 pt-2 pb-0.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Books</span>
+      <div className="flex items-center justify-between px-3 pt-2 pb-0.5 cursor-default select-none" data-tauri-drag-region>
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 pointer-events-none">Books</span>
         <button
           type="button"
           onClick={onToggleCollapsed}

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Minimize2 } from 'lucide-react'
+import { Minimize2, Minus, X } from 'lucide-react'
 
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import { invoke } from '@tauri-apps/api/core'
 import { SearchModal } from '../search/SearchModal'
 import { NotesDrawer } from '../study/NotesDrawer'
 import { TabBar } from '../tabs/TabBar'
@@ -66,6 +68,22 @@ function ZenExitButton({ onExit }: { onExit: () => void }) {
     return () => clearTimeout(timer)
   }, [])
 
+  const handleMinimize = async () => {
+    try {
+      await getCurrentWindow().minimize()
+    } catch {
+      await invoke('window_minimize').catch(() => {})
+    }
+  }
+
+  const handleClose = async () => {
+    try {
+      await getCurrentWindow().close()
+    } catch {
+      await invoke('window_close').catch(() => {})
+    }
+  }
+
   return createPortal(
     <>
       {showToast && (
@@ -75,15 +93,33 @@ function ZenExitButton({ onExit }: { onExit: () => void }) {
           </div>
         </div>
       )}
-      <button
-        type="button"
-        onClick={onExit}
-        title="Exit Zen mode (Esc or F11)"
-        className="fixed top-3 right-4 z-50 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-900/90 text-amber-300 border border-amber-500/40 shadow-lg text-xs font-medium hover:bg-neutral-800 hover:text-amber-200 transition-all cursor-pointer backdrop-blur-md opacity-85 hover:opacity-100"
-      >
-        <Minimize2 size={13} />
-        <span>Exit Zen Mode (Esc)</span>
-      </button>
+      <div className="fixed top-3 right-4 z-50 flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onExit}
+          title="Exit Zen mode (Esc or F11)"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-900/90 text-amber-300 border border-amber-500/40 shadow-lg text-xs font-medium hover:bg-neutral-800 hover:text-amber-200 transition-all cursor-pointer backdrop-blur-md opacity-85 hover:opacity-100"
+        >
+          <Minimize2 size={13} />
+          <span>Exit Zen Mode (Esc)</span>
+        </button>
+        <button
+          type="button"
+          onClick={handleMinimize}
+          title="Minimize window"
+          className="p-1.5 rounded-full bg-neutral-900/90 text-neutral-400 border border-neutral-700/60 shadow-lg hover:bg-neutral-800 hover:text-neutral-100 transition-all cursor-pointer backdrop-blur-md opacity-75 hover:opacity-100"
+        >
+          <Minus size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={handleClose}
+          title="Close window"
+          className="p-1.5 rounded-full bg-neutral-900/90 text-neutral-400 border border-neutral-700/60 shadow-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-all cursor-pointer backdrop-blur-md opacity-75 hover:opacity-100"
+        >
+          <X size={13} />
+        </button>
+      </div>
     </>,
     document.body,
   )
