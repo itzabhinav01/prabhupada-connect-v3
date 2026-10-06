@@ -232,24 +232,22 @@ export function ReaderCanvas() {
       </div>
 
       {splitMode !== 'none' && (
-        <>
-          <div className="w-px bg-neutral-800 shrink-0" />
-          <div className="w-[40%] min-w-[320px] shrink-0 bg-neutral-950">
-            {splitMode === 'parallel' ? (
-              <ParallelScripturePanel
-                onSwitchMode={() => setSplitMode('notebook')}
-                onClose={() => setSplitMode('none')}
-              />
-            ) : (
-              <RealizationNotebookPanel
-                activeRecordKey={activeRecord?.recordKey ?? null}
-                activeReference={activeRecord?.reference ?? activeRecord?.recordKey ?? ''}
-                onSwitchMode={() => setSplitMode('parallel')}
-                onClose={() => setSplitMode('none')}
-              />
-            )}
-          </div>
-        </>
+        <div className="w-[45%] min-w-[360px] shrink-0 bg-neutral-950 flex flex-col min-h-0 h-full overflow-hidden border-l border-neutral-800">
+          {splitMode === 'parallel' ? (
+            <ParallelScripturePanel
+              initialRecordKey={activeRecord?.recordKey ?? null}
+              onSwitchMode={() => setSplitMode('notebook')}
+              onClose={() => setSplitMode('none')}
+            />
+          ) : (
+            <RealizationNotebookPanel
+              activeRecordKey={activeRecord?.recordKey ?? null}
+              activeReference={activeRecord?.reference ?? activeRecord?.recordKey ?? ''}
+              onSwitchMode={() => setSplitMode('parallel')}
+              onClose={() => setSplitMode('none')}
+            />
+          )}
+        </div>
       )}
     </div>
   )
