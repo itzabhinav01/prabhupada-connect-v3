@@ -28,6 +28,19 @@ export function ContinuousReader({ records }: { records: VerseRecord[] }) {
     overscan: 4,
   })
 
+  // When split view opens/closes or container width changes, dynamic line wrapping
+  // drastically alters verse heights. Re-measure virtual items so the full verse
+  // content always loads and scroll boundaries are accurate.
+  useEffect(() => {
+    const el = parentRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      virtualizer.measure()
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [virtualizer])
+
   // Scroll restoration: jump to the current active verse whenever a new
   // chapter loads, an explicit "jump" is requested (breadcrumb click), or
   // this reader remounts after returning from Focus mode. Deliberately NOT

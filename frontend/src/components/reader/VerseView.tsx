@@ -357,7 +357,7 @@ export function VerseView({ record }: { record: VerseRecord }) {
         )}
       </div>
 
-      <VerseNotesPanel verseId={record.recordKey} />
+      <VerseNotesPanel verseId={record.recordKey} reference={record.reference} />
 
       <SelectionToolbar
         containerRef={highlightRootRef}

@@ -500,6 +500,145 @@ pub fn get_notes_for_verse(conn: &Connection, verse_id: &str) -> rusqlite::Resul
     result
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteBacklink {
+    pub id: i64,
+    pub source_verse_id: Option<String>,
+    pub source_title: Option<String>,
+    pub excerpt: String,
+    pub updated_at: String,
+    pub link_type: String,
+}
+
+/// Discovers notes across the user's research database that reference `verse_id` or `reference`,
+/// including `@mention` tags, `[[wikilinks]]`, and explicit verse citations.
+pub fn get_backlinks_for_verse(
+    conn: &Connection,
+    verse_id: &str,
+    reference: Option<&str>,
+) -> rusqlite::Result<Vec<NoteBacklink>> {
+    let mut targets: Vec<String> = Vec::new();
+    let norm_vid = verse_id.trim();
+    if !norm_vid.is_empty() {
+        targets.push(norm_vid.to_lowercase());
+        targets.push(norm_vid.replace('-', " ").to_lowercase());
+        targets.push(norm_vid.replace('-', ".").to_lowercase());
+    }
+    if let Some(r) = reference {
+        let norm_ref = r.trim();
+        if !norm_ref.is_empty() {
+            targets.push(norm_ref.to_lowercase());
+            targets.push(norm_ref.replace(' ', "-").to_lowercase());
+            targets.push(norm_ref.replace(' ', ".").to_lowercase());
+        }
+    }
+    targets.sort();
+    targets.dedup();
+
+    let mut stmt = conn.prepare(
+        "SELECT id, verse_id, title, content_text, updated_at \
+         FROM notes \
+         WHERE deleted_at IS NULL AND (verse_id IS NULL OR verse_id != ?1) \
+         ORDER BY updated_at DESC"
+    )?;
+
+    let mut backlinks: Vec<NoteBacklink> = Vec::new();
+    let rows = stmt.query_map([verse_id], |row| {
+        Ok((
+            row.get::<_, i64>(0)?,
+            row.get::<_, Option<String>>(1)?,
+            row.get::<_, Option<String>>(2)?,
+            row.get::<_, String>(3)?,
+            row.get::<_, String>(4)?,
+        ))
+    })?;
+
+    for row_res in rows {
+        let (id, s_verse_id, title, content, updated_at) = row_res?;
+        let lower_content = content.to_lowercase();
+        let lower_title = title.as_deref().unwrap_or("").to_lowercase();
+
+        let mut matched = false;
+        let mut link_type = "citation".to_string();
+        let mut match_pos: usize = 0;
+        let mut match_len: usize = 0;
+
+        for target in &targets {
+            let wiki_pattern = format!("[[{target}]]");
+            if let Some(pos) = lower_content.find(&wiki_pattern) {
+                matched = true;
+                link_type = "wikilink".to_string();
+                match_pos = pos;
+                match_len = wiki_pattern.len();
+                break;
+            }
+
+            let at_pattern = format!("@{target}");
+            if let Some(pos) = lower_content.find(&at_pattern) {
+                matched = true;
+                link_type = "mention".to_string();
+                match_pos = pos;
+                match_len = at_pattern.len();
+                break;
+            }
+
+            if let Some(pos) = lower_content.find(target) {
+                let end = pos + target.len();
+                let is_word_bound = match lower_content[end..].chars().next() {
+                    None => true,
+                    Some(c) => !c.is_alphanumeric(),
+                };
+                if is_word_bound {
+                    matched = true;
+                    if pos > 0 && lower_content.as_bytes()[pos - 1] == b'@' {
+                        link_type = "mention".to_string();
+                    }
+                    match_pos = pos;
+                    match_len = target.len();
+                    break;
+                }
+            }
+
+            if lower_title.contains(target) {
+                matched = true;
+                match_pos = 0;
+                match_len = 0;
+                break;
+            }
+        }
+
+        if matched {
+            let excerpt = if content.is_empty() {
+                title.clone().unwrap_or_default()
+            } else {
+                let char_indices: Vec<(usize, char)> = content.char_indices().collect();
+                let char_pos = char_indices.iter().position(|&(b, _)| b >= match_pos).unwrap_or(0);
+                let start_char = char_pos.saturating_sub(40);
+                let end_char = (char_pos + match_len + 40).min(char_indices.len());
+
+                let start_byte = char_indices.get(start_char).map(|&(b, _)| b).unwrap_or(0);
+                let end_byte = char_indices.get(end_char).map(|&(b, _)| b).unwrap_or(content.len());
+
+                let prefix = if start_char > 0 { "…" } else { "" };
+                let suffix = if end_char < char_indices.len() { "…" } else { "" };
+                format!("{}{}{}", prefix, content[start_byte..end_byte].trim(), suffix)
+            };
+
+            backlinks.push(NoteBacklink {
+                id,
+                source_verse_id: s_verse_id,
+                source_title: title,
+                excerpt,
+                updated_at,
+                link_type,
+            });
+        }
+    }
+
+    Ok(backlinks)
+}
+
 pub fn get_all_notes(conn: &Connection) -> rusqlite::Result<Vec<Note>> {
     let mut stmt = conn.prepare(&format!(
         "SELECT {NOTE_COLUMNS} FROM notes WHERE deleted_at IS NULL ORDER BY updated_at DESC"

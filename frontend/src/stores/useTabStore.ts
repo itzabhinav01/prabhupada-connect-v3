@@ -96,7 +96,7 @@ interface TabState {
     verseId: string | null
     title: string
     forceNewTab?: boolean
-  }) => void
+  }) => string
   openSearchTab: (query: string) => void
   openSearchTabForBook: (bookKey: string, bookTitle: string) => void
   openUtilityTab: (type: 'settings' | 'notes' | 'bookmarks' | 'history' | 'highlights' | 'help', title: string) => void
@@ -214,7 +214,7 @@ export const useTabStore = create<TabState>((set, get) => ({
   },
 
   openReaderTab: ({ bookKey, chapterKey, verseId, title, forceNewTab }) => {
-    get().openTab(
+    return get().openTab(
       { type: 'reader', title, payload: { bookKey, chapterKey, verseId } satisfies ReaderTabPayload },
       forceNewTab ? undefined : { reuseKey: `reader:${bookKey}:${chapterKey ?? ''}` },
     )

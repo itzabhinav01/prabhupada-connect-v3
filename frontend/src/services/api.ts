@@ -356,6 +356,23 @@ export async function getNotesForVerse(verseId: string): Promise<Note[]> {
   }
 }
 
+export interface NoteBacklink {
+  id: number
+  sourceVerseId: string | null
+  sourceTitle: string | null
+  excerpt: string
+  updatedAt: string
+  linkType: 'mention' | 'wikilink' | 'citation' | string
+}
+
+export async function getBacklinksForVerse(verseId: string, reference?: string | null): Promise<NoteBacklink[]> {
+  try {
+    return await invoke<NoteBacklink[]>('get_backlinks_for_verse', { verseId, reference: reference ?? null })
+  } catch (e) {
+    throw new ApiError('getBacklinksForVerse', e)
+  }
+}
+
 export async function getAllNotes(): Promise<Note[]> {
   try {
     return await invoke<Note[]>('get_all_notes')

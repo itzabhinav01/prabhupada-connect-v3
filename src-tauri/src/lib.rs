@@ -27,7 +27,7 @@ use commands::settings::{get_setting, save_setting};
 use commands::study::{
     add_bookmark, apply_bookmark_tombstone, apply_highlight_tombstone, apply_note_tombstone,
     clear_bookmark_collection, clear_history, create_note, delete_highlight, delete_note, get_all_highlights,
-    get_all_highlights_for_sync, get_all_notes, get_all_notes_for_sync, get_bookmarks, get_highlights_for_verse,
+    get_all_highlights_for_sync, get_all_notes, get_all_notes_for_sync, get_backlinks_for_verse, get_bookmarks, get_highlights_for_verse,
     get_history, get_notes_for_verse, get_bookmarks_for_sync, insert_history_if_absent, move_bookmark_to_collection,
     record_history, remove_bookmark, rename_bookmark_collection, save_highlight, set_bookmark_remote_collection_id,
     set_bookmark_remote_id, set_highlight_remote_id, set_note_remote_id, update_note, upsert_synced_highlight,
@@ -102,6 +102,7 @@ pub fn run() {
             update_note,
             delete_note,
             get_notes_for_verse,
+            get_backlinks_for_verse,
             get_all_notes,
             get_all_notes_for_sync,
             set_note_remote_id,

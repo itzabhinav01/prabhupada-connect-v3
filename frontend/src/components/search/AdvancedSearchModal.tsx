@@ -9,18 +9,16 @@ const OPERATORS: { label: string; token: string }[] = [
   { label: 'AND', token: 'AND' },
   { label: 'OR', token: 'OR' },
   { label: 'NOT', token: 'NOT' },
+  { label: 'NEAR/5', token: 'NEAR/5' },
+  { label: 'NEAR/10', token: 'NEAR/10' },
   { label: 'w/5', token: 'w/5' },
   { label: 'w/10', token: 'w/10' },
+  { label: '*', token: '*' },
 ]
 
-/** v2's word-wheel dialog lets a "w/N" proximity token sit between two
- * plain words in the query box (a Folio-style shorthand); FTS5 itself only
- * understands the function form `NEAR(a b, N)`. This rewrites the shorthand
- * into that form right before a query is actually run, so the button labels
- * and insertion UX can stay exactly as v2's, while the string that reaches
- * FTS5 is always valid. */
+/** Normalizes Folio proximity shorthands (`w/N`, `NEAR/N`) into standard FTS5 `NEAR(a b, N)`. */
 export function normalizeFolioShorthand(query: string): string {
-  return query.replace(/(\S+)\s+w\/(\d+)\s+(\S+)/gi, (_m, a: string, n: string, b: string) => `NEAR(${a} ${b}, ${n})`)
+  return query.replace(/("(?:\\.|[^"\\])*"|\S+)\s+(?:w|near)\/(\d+)\s+("(?:\\.|[^"\\])*"|\S+)/gi, (_m, a: string, n: string, b: string) => `NEAR(${a} ${b}, ${n})`)
 }
 
 function appendToken(current: string, token: string): string {

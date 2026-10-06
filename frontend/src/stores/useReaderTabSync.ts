@@ -74,6 +74,7 @@ export function useReaderTabSync() {
   useEffect(() => {
     if (!activeTab || activeTab.type !== 'reader') return
     if (!selectedBook) return
+    if (lastRestoredTabId.current !== activeTab.id) return
     const payload = activeTab.payload as ReaderTabPayload
     const nextChapterKey = selectedChapter?.chapterKey ?? null
     // Guard against a write-back -> new tab-object-identity -> effect-rerun

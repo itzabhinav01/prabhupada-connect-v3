@@ -1,7 +1,7 @@
 use tauri::State;
 
 use crate::db::user_store::{
-    self, Bookmark, Highlight, HistoryEntry, Note, NewBookmark, NewHighlight, NewHistoryEntry, NewNote,
+    self, Bookmark, Highlight, HistoryEntry, Note, NoteBacklink, NewBookmark, NewHighlight, NewHistoryEntry, NewNote,
 };
 use crate::state::AppState;
 
@@ -115,6 +115,16 @@ pub fn delete_note(state: State<AppState>, id: i64) -> Result<(), String> {
 pub fn get_notes_for_verse(state: State<AppState>, verse_id: String) -> Result<Vec<Note>, String> {
     let conn = state.user_db.lock().map_err(lock_err)?;
     user_store::get_notes_for_verse(&conn, &verse_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_backlinks_for_verse(
+    state: State<AppState>,
+    verse_id: String,
+    reference: Option<String>,
+) -> Result<Vec<NoteBacklink>, String> {
+    let conn = state.user_db.lock().map_err(lock_err)?;
+    user_store::get_backlinks_for_verse(&conn, &verse_id, reference.as_deref()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

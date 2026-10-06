@@ -785,71 +785,289 @@ fn resolve_book_group(group: &str) -> Option<&'static [&'static str]> {
     }
 }
 
-/// Escapes a single token for safe use inside an FTS5 MATCH string by
-/// wrapping it in double quotes (FTS5's string-literal escaping), so
-/// arbitrary user input can never break out into query-syntax operators.
-fn escape_fts_token(token: &str) -> String {
-    format!("\"{}\"", token.replace('"', "\"\""))
+/// Folds Sanskrit IAST and European diacritical marks into their ASCII equivalents.
+pub fn strip_diacritics(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        let mapped = match c {
+            'ā' | 'à' | 'á' | 'â' | 'ã' | 'ä' => 'a',
+            'Ā' | 'À' | 'Á' | 'Â' | 'Ã' | 'Ä' => 'A',
+            'ī' | 'ì' | 'í' | 'î' | 'ï' => 'i',
+            'Ī' | 'Ì' | 'Í' | 'Î' | 'Ï' => 'I',
+            'ū' | 'ù' | 'ú' | 'û' | 'ü' => 'u',
+            'Ū' | 'Ù' | 'Ú' | 'Û' | 'Ü' => 'U',
+            'ṛ' | 'ṝ' => 'r',
+            'Ṛ' | 'Ṝ' => 'R',
+            'ḷ' | 'ḹ' => 'l',
+            'Ḷ' | 'Ḹ' => 'L',
+            'ṅ' | 'ñ' | 'ṇ' => 'n',
+            'Ṅ' | 'Ñ' | 'Ṇ' => 'N',
+            'ṭ' => 't',
+            'Ṭ' => 'T',
+            'ḍ' => 'd',
+            'Ḍ' => 'D',
+            'ś' | 'ṣ' => 's',
+            'Ś' | 'Ṣ' => 'S',
+            'ḥ' => 'h',
+            'Ḥ' => 'H',
+            'ṁ' | 'ṃ' => 'm',
+            'Ṁ' | 'Ṃ' => 'M',
+            '\u{0300}'..='\u{036F}' => continue, // strip combining accents
+            other => other,
+        };
+        out.push(mapped);
+    }
+    out
 }
 
-/// The corpus's `RecordsFts` table only folds Unicode combining diacritics
-/// (`tokenize = 'unicode61 remove_diacritics 1'`) — verified directly
-/// against the real index: `"kṛṣṇa"` and `"krsna"` both correctly return
-/// 10,457 hits, but the popular English spelling `"krishna"` (ṛ→"ri",
-/// ṣ→"sh" instead of a bare strip) returns only 197, missing the rest.
 /// Returns the diacritic-stripped form a popular-spelling `token` would
 /// need to become to hit the real index, or `None` when the two are
 /// already identical (nothing to add).
-fn anglicized_fold_variant(token: &str) -> Option<String> {
+pub fn anglicized_fold_variant(token: &str) -> Option<String> {
     let lower = token.to_lowercase();
     let variant = lower.replace("sh", "s").replace("ri", "r");
     (variant != lower).then_some(variant)
 }
 
-/// Builds a safe FTS5 MATCH expression from raw user input. Multi-word
-/// queries become an implicit AND of quoted tokens; when `prefix` is set the
-/// final token gets a trailing `*` for incremental/live search. When
-/// `exact_word` is set, the whole query becomes a single adjacent phrase
-/// (`"tok1 tok2"`) instead — FTS5 phrase-boundary matching, so "kṛṣṇa"
-/// cannot match inside "kṛṣṇaḥ" and multi-word queries must appear
-/// side-by-side rather than merely all present somewhere in the field.
-///
-/// Each token additionally ORs in its `anglicized_fold_variant` when one
-/// exists, so this only ever gains matches a literal search would miss
-/// (e.g. "krishna" also tries "krsna") — it never loses any the plain term
-/// would already find, even in the rare case the fold happens to collide
-/// with an unrelated token.
-fn build_match_expression(query: &str, prefix: bool, exact_word: bool) -> Option<String> {
-    let tokens: Vec<&str> = query.split_whitespace().collect();
-    if tokens.is_empty() {
+/// Returns common phonetic / transliteration variants for key Vaishnava terms
+/// so queries match regardless of popular English or Sanskrit spelling.
+pub fn phonetic_variants(token: &str) -> Vec<String> {
+    let lower = token.to_lowercase();
+    let stripped = strip_diacritics(&lower);
+    let mut variants = Vec::new();
+
+    match stripped.as_str() {
+        "krsna" | "krishna" => {
+            variants.push("krsna".to_string());
+            variants.push("krishna".to_string());
+        }
+        "caitanya" | "chaitanya" => {
+            variants.push("caitanya".to_string());
+            variants.push("chaitanya".to_string());
+        }
+        "siva" | "shiva" => {
+            variants.push("siva".to_string());
+            variants.push("shiva".to_string());
+        }
+        "visnu" | "vishnu" => {
+            variants.push("visnu".to_string());
+            variants.push("vishnu".to_string());
+        }
+        "vrndavana" | "vrindavana" | "vrindavan" => {
+            variants.push("vrndavana".to_string());
+            variants.push("vrindavana".to_string());
+            variants.push("vrindavan".to_string());
+        }
+        "kuruksetra" | "kurukshetra" => {
+            variants.push("kuruksetra".to_string());
+            variants.push("kurukshetra".to_string());
+        }
+        "arjuna" | "arjun" => {
+            variants.push("arjuna".to_string());
+            variants.push("arjun".to_string());
+        }
+        "yasoda" | "yashoda" => {
+            variants.push("yasoda".to_string());
+            variants.push("yashoda".to_string());
+        }
+        "radha" | "radharani" => {
+            variants.push("radha".to_string());
+            variants.push("radharani".to_string());
+        }
+        "sankirtana" | "sankirtan" => {
+            variants.push("sankirtana".to_string());
+            variants.push("sankirtan".to_string());
+        }
+        "gaura" | "gauranga" => {
+            variants.push("gaura".to_string());
+            variants.push("gauranga".to_string());
+        }
+        _ => {
+            variants.push(stripped.clone());
+            if let Some(ang) = anglicized_fold_variant(&stripped) {
+                variants.push(ang);
+            }
+        }
+    }
+    variants.sort();
+    variants.dedup();
+    variants
+}
+
+/// Preprocesses proximity shorthand like `"surrender" NEAR/10 "lotus feet"` or `surrender w/5 feet`
+/// into FTS5 function syntax: `NEAR("surrender" "lotus feet", 10)`.
+pub fn rewrite_proximity_expressions(query: &str) -> String {
+    let re = regex::Regex::new(r#"(?i)("(?:\\.|[^"\\])*"|[^\s()]+)\s+(?:near|w)/(\d+)\s+("(?:\\.|[^"\\])*"|[^\s()]+)"#)
+        .expect("valid proximity regex");
+
+    let mut current = query.to_string();
+    for _ in 0..5 {
+        if !re.is_match(&current) {
+            break;
+        }
+        current = re.replace_all(&current, |caps: &regex::Captures| {
+            let op1 = caps.get(1).map_or("", |m| m.as_str()).trim();
+            let dist = caps.get(2).map_or("10", |m| m.as_str());
+            let op2 = caps.get(3).map_or("", |m| m.as_str()).trim();
+
+            let clean_op = |op: &str| -> String {
+                let trimmed = op.trim();
+                if trimmed.starts_with('"') && trimmed.ends_with('"') && trimmed.len() >= 2 {
+                    format!("\"{}\"", &trimmed[1..trimmed.len() - 1].replace('"', "\"\""))
+                } else {
+                    format!("\"{}\"", trimmed.replace('"', "\"\""))
+                }
+            };
+            format!("NEAR({} {}, {})", clean_op(op1), clean_op(op2), dist)
+        }).to_string();
+    }
+    current
+}
+
+/// Builds a safe, high-precision FTS5 MATCH expression from user search input.
+/// Supports:
+/// - Proximity operators (`NEAR/N`, `w/N`): `"surrender" NEAR/10 "lotus feet"` -> `NEAR("surrender" "lotus feet", 10)`
+/// - Boolean operators (`AND`, `OR`, `NOT`) and grouping parentheses `(...)`
+/// - Wildcards (`kṛṣṇa*`, `krishna*`, `devot*`) with diacritic-agnostic and phonetic folding
+/// - Multi-word phrase search (`"lotus feet"`)
+/// - Incremental prefix search on the final token when `prefix: true`
+pub fn build_match_expression(raw_query: &str, prefix: bool, exact_word: bool) -> Option<String> {
+    let trimmed = raw_query.trim();
+    if trimmed.is_empty() {
         return None;
     }
 
     if exact_word {
-        let phrase = tokens.join(" ").replace('"', "\"\"");
+        let phrase = trimmed.replace('"', "\"\"");
         return Some(format!("\"{phrase}\""));
     }
 
-    let last_idx = tokens.len() - 1;
-    let build_term = |t: &str, i: usize| {
-        if prefix && i == last_idx {
-            format!("{}*", escape_fts_token(t))
-        } else {
-            escape_fts_token(t)
+    // Rewrite proximity syntax first: `surrender NEAR/10 "lotus feet"` -> `NEAR("surrender" "lotus feet", 10)`
+    let preprocessed = rewrite_proximity_expressions(trimmed);
+
+    // If preprocessed query already contains NEAR(...) and nothing else, return it directly
+    if preprocessed.trim().to_uppercase().starts_with("NEAR(") && preprocessed.trim().ends_with(')') {
+        return Some(preprocessed.trim().to_string());
+    }
+
+    // Tokenize preserving quoted phrases, parentheses, NEAR(...) blocks, and words
+    let token_re = regex::Regex::new(r#"(?i)NEAR\s*\([^)]+\)|"[^"]*"|\(|\)|[^\s()]+"#).expect("valid token regex");
+
+    let raw_tokens: Vec<&str> = token_re.find_iter(&preprocessed).map(|m| m.as_str().trim()).filter(|s| !s.is_empty()).collect();
+    if raw_tokens.is_empty() {
+        return None;
+    }
+
+    let mut out_tokens: Vec<String> = Vec::new();
+    let mut open_parens: usize = 0;
+
+    let total = raw_tokens.len();
+    for (i, &tok) in raw_tokens.iter().enumerate() {
+        let is_last = i == total - 1;
+
+        // Parentheses
+        if tok == "(" {
+            open_parens += 1;
+            out_tokens.push("(".to_string());
+            continue;
         }
-    };
-    let parts: Vec<String> = tokens
-        .iter()
-        .enumerate()
-        .map(|(i, t)| {
-            let term = build_term(t, i);
-            match anglicized_fold_variant(t) {
-                Some(variant) => format!("({term} OR {})", build_term(&variant, i)),
-                None => term,
+        if tok == ")" {
+            if open_parens > 0 {
+                open_parens -= 1;
+                out_tokens.push(")".to_string());
             }
-        })
+            continue;
+        }
+
+        // NEAR block
+        if tok.to_uppercase().starts_with("NEAR(") && tok.ends_with(')') {
+            out_tokens.push(tok.to_string());
+            continue;
+        }
+
+        // Quoted phrase
+        if tok.starts_with('"') && tok.ends_with('"') && tok.len() >= 2 {
+            let inner = &tok[1..tok.len() - 1].replace('"', "\"\"");
+            out_tokens.push(format!("\"{inner}\""));
+            continue;
+        }
+
+        let upper = tok.to_uppercase();
+        // Explicit boolean operators: AND, OR, NOT
+        if upper == "AND" || upper == "OR" || upper == "NOT" {
+            // Avoid duplicate consecutive operators or leading operator
+            if let Some(prev) = out_tokens.last() {
+                let prev_u = prev.to_uppercase();
+                if prev_u != "AND" && prev_u != "OR" && prev_u != "NOT" && prev != "(" {
+                    out_tokens.push(upper);
+                }
+            }
+            continue;
+        }
+
+        // Handle wildcards: e.g. kṛṣṇa* or devot*
+        let has_wildcard = tok.ends_with('*');
+        let clean_tok = tok.trim_end_matches('*');
+        if clean_tok.is_empty() {
+            continue;
+        }
+
+        let is_prefix_term = (has_wildcard || (prefix && is_last)) && !clean_tok.is_empty();
+        let star = if is_prefix_term { "*" } else { "" };
+
+        let variants = phonetic_variants(clean_tok);
+        if variants.len() > 1 {
+            let or_terms: Vec<String> = variants
+                .iter()
+                .map(|v| format!("\"{}\"{}", v.replace('"', "\"\""), star))
+                .collect();
+            out_tokens.push(format!("({})", or_terms.join(" OR ")));
+        } else {
+            let base = variants.first().map(|s| s.as_str()).unwrap_or(clean_tok);
+            out_tokens.push(format!("\"{}\"{}", base.replace('"', "\"\""), star));
+        }
+    }
+
+    // Disarm trailing operator (e.g. `term AND` -> `term`)
+    while let Some(last) = out_tokens.last() {
+        let last_u = last.to_uppercase();
+        if last_u == "AND" || last_u == "OR" || last_u == "NOT" || last == "(" {
+            if last == "(" {
+                open_parens = open_parens.saturating_sub(1);
+            }
+            out_tokens.pop();
+        } else {
+            break;
+        }
+    }
+
+    // Close any unclosed parentheses
+    for _ in 0..open_parens {
+        out_tokens.push(")".to_string());
+    }
+
+    if out_tokens.is_empty() {
+        return None;
+    }
+
+    Some(out_tokens.join(" "))
+}
+
+pub fn build_safe_fallback_match_expression(raw_query: &str) -> Option<String> {
+    let tokens: Vec<&str> = raw_query.split_whitespace().collect();
+    if tokens.is_empty() {
+        return None;
+    }
+    let terms: Vec<String> = tokens
+        .into_iter()
+        .map(|t| format!("\"{}\"", t.trim_matches('"').replace('"', "\"\"")))
+        .filter(|t| t != "\"\"")
         .collect();
-    Some(parts.join(" "))
+    if terms.is_empty() {
+        None
+    } else {
+        Some(terms.join(" "))
+    }
 }
 
 const CASE_SENSITIVE_FIELDS: &[&str] = &["Title", "Devanagari", "Synonyms", "Translation", "Purports"];
@@ -863,7 +1081,7 @@ pub fn search_corpus(
 
     let raw_query = params.query.trim();
     let Some(mut match_expr) = (if params.raw {
-        if raw_query.is_empty() { None } else { Some(raw_query.to_string()) }
+        if raw_query.is_empty() { None } else { Some(rewrite_proximity_expressions(raw_query)) }
     } else {
         build_match_expression(&params.query, params.prefix, params.exact_word)
     }) else {
@@ -935,10 +1153,11 @@ pub fn search_corpus(
          WHERE f.RecordsFts MATCH ?{book_filter_sql}{case_filter_sql}{order_sql} LIMIT ? OFFSET ?"
     );
 
-    let run = || -> rusqlite::Result<(i64, Vec<SearchHit>)> {
+    let mut active_expr = match_expr.clone();
+    let execute_query = |expr: &str| -> rusqlite::Result<(i64, Vec<SearchHit>)> {
         let total: i64 = {
             let mut stmt = conn.prepare(&count_sql)?;
-            let mut params_vec: Vec<&dyn rusqlite::ToSql> = vec![&match_expr];
+            let mut params_vec: Vec<&dyn rusqlite::ToSql> = vec![&expr];
             for k in &book_filter_keys {
                 params_vec.push(k);
             }
@@ -949,7 +1168,7 @@ pub fn search_corpus(
         };
 
         let mut stmt = conn.prepare(&query_sql)?;
-        let mut params_vec: Vec<&dyn rusqlite::ToSql> = vec![&match_expr];
+        let mut params_vec: Vec<&dyn rusqlite::ToSql> = vec![&expr];
         for k in &book_filter_keys {
             params_vec.push(k);
         }
@@ -972,12 +1191,71 @@ pub fn search_corpus(
         Ok((total, hits))
     };
 
-    // FTS5 will reject malformed MATCH syntax (unbalanced quotes, dangling
-    // operators, etc.) with a rusqlite::Error rather than panicking; we
-    // surface that as a normal command error instead of letting it bubble as
-    // an unhandled panic.
-    match run() {
+    match execute_query(&active_expr) {
         Ok((total, hits)) => Ok(SearchResponse { hits, total, limit, offset }),
-        Err(e) => Err(format!("search query failed: {e}")),
+        Err(e) => {
+            if let Some(fallback) = build_safe_fallback_match_expression(&params.query) {
+                if fallback != active_expr {
+                    active_expr = fallback;
+                    if let Ok((total, hits)) = execute_query(&active_expr) {
+                        return Ok(SearchResponse { hits, total, limit, offset });
+                    }
+                }
+            }
+            Err(format!("search query failed: {e}"))
+        }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strip_diacritics() {
+        assert_eq!(strip_diacritics("kṛṣṇa"), "krsna");
+        assert_eq!(strip_diacritics("Śrīla Prabhupāda"), "Srila Prabhupada");
+        assert_eq!(strip_diacritics("Caitanya-caritāmṛta"), "Caitanya-caritamrta");
+    }
+
+    #[test]
+    fn test_proximity_rewriting() {
+        let q1 = rewrite_proximity_expressions(r#""surrender" NEAR/10 "lotus feet""#);
+        assert_eq!(q1, r#"NEAR("surrender" "lotus feet", 10)"#);
+
+        let q2 = rewrite_proximity_expressions(r#"surrender NEAR/5 lotus feet"#);
+        assert_eq!(q2, r#"NEAR("surrender" "lotus", 5) feet"#);
+
+        let q3 = rewrite_proximity_expressions(r#"surrender w/10 "lotus feet""#);
+        assert_eq!(q3, r#"NEAR("surrender" "lotus feet", 10)"#);
+    }
+
+    #[test]
+    fn test_wildcard_diacritic_and_phonetics() {
+        let expr = build_match_expression("kṛṣṇa*", false, false).unwrap();
+        assert!(expr.contains(r#""krsna"*"#));
+
+        let expr_krishna = build_match_expression("krishna*", false, false).unwrap();
+        assert!(expr_krishna.contains("OR") && expr_krishna.contains(r#""krsna"*"#));
+    }
+
+    #[test]
+    fn test_boolean_and_parentheses() {
+        let expr = build_match_expression(r#"surrender AND "lotus feet""#, false, false).unwrap();
+        assert!(expr.contains(r#""surrender""#) && expr.contains("AND") && expr.contains(r#""lotus feet""#));
+
+        let expr_group = build_match_expression(r#"(surrender OR service) AND "lotus feet""#, false, false).unwrap();
+        assert!(expr_group.starts_with('(') && expr_group.contains("AND"));
+
+        // Unclosed parenthesis and trailing operator should be disarmed gracefully
+        let unclosed = build_match_expression(r#"(surrender AND"#, false, false).unwrap();
+        assert!(unclosed.contains(r#""surrender""#));
+    }
+
+    #[test]
+    fn test_exact_word() {
+        let expr = build_match_expression("surrender unto me", false, true).unwrap();
+        assert_eq!(expr, r#""surrender unto me""#);
+    }
+}
+
