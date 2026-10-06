@@ -59,15 +59,32 @@ function useAutoSync() {
 }
 
 function ZenExitButton({ onExit }: { onExit: () => void }) {
+  const [showToast, setShowToast] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowToast(false), 3500)
+    return () => clearTimeout(timer)
+  }, [])
+
   return createPortal(
-    <button
-      type="button"
-      onClick={onExit}
-      title="Exit Zen mode (Esc or Ctrl+Shift+F)"
-      className="fixed top-3 right-3 z-50 p-2 rounded-full bg-neutral-900/60 text-neutral-500 opacity-30 hover:opacity-100 hover:text-neutral-200 hover:bg-neutral-900 transition-all"
-    >
-      <Minimize2 size={15} />
-    </button>,
+    <>
+      {showToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-500 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-900/95 border border-amber-500/40 text-amber-200 text-xs font-medium shadow-2xl backdrop-blur-md">
+            <span>Zen Focus Mode active &bull; Press <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-200 border border-neutral-700 font-mono">Esc</kbd> or <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-200 border border-neutral-700 font-mono">F11</kbd> to return</span>
+          </div>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={onExit}
+        title="Exit Zen mode (Esc or F11)"
+        className="fixed top-3 right-4 z-50 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-900/90 text-amber-300 border border-amber-500/40 shadow-lg text-xs font-medium hover:bg-neutral-800 hover:text-amber-200 transition-all cursor-pointer backdrop-blur-md opacity-85 hover:opacity-100"
+      >
+        <Minimize2 size={13} />
+        <span>Exit Zen Mode (Esc)</span>
+      </button>
+    </>,
     document.body,
   )
 }
