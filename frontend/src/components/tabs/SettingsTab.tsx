@@ -47,7 +47,6 @@ import {
   type ImportedBook,
 } from '../../services/api'
 import { checkForUpdate, type UpdateInfo } from '../../services/updateChecker'
-import { importV2Backup, readV2BackupFile } from '../../services/vdbbackupImport'
 import {
   buildDiagnostics,
   getCurrentUser,
@@ -607,10 +606,6 @@ function DataBackupSection() {
     }
   }
 
-  const [v2BackupPath, setV2BackupPath] = useState('')
-  const [v2ImportStatus, setV2ImportStatus] = useState<string | null>(null)
-  const [v2Importing, setV2Importing] = useState(false)
-
   const [backupDir, setBackupDir] = useState<string | null>(null)
 
   useEffect(() => {
@@ -640,44 +635,6 @@ function DataBackupSection() {
       setMessage(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
-    }
-  }
-
-  const runPickAndImportV2 = async () => {
-    try {
-      const selected = await openFileDialog({
-        multiple: false,
-        directory: false,
-        title: 'Select VedaBase v2 Backup Archive (.vdbbackup or .json)',
-        filters: [
-          { name: 'VedaBase v2 Backup', extensions: ['vdbbackup', 'json'] },
-          { name: 'All Files', extensions: ['*'] },
-        ],
-      })
-      if (!selected || typeof selected !== 'string') return
-      setV2BackupPath(selected)
-      setV2Importing(true)
-      setV2ImportStatus('Importing…')
-      const payload = await readV2BackupFile(selected)
-      const result = await importV2Backup(payload)
-      await refreshActiveUserData()
-      const parts = [
-        `${result.importedBookmarks} bookmarks`,
-        `${result.importedHighlights} highlights`,
-        `${result.importedNotes} notes`,
-        `${result.importedHistory} history entries`,
-      ]
-      let status = `Successfully imported: ${parts.join(', ')}.`
-      if (result.errors.length > 0) {
-        status += ` (${result.errors.length} failed — check console)`
-        console.warn('[v2 backup import] errors:', result.errors)
-      }
-      setV2ImportStatus(status)
-      refresh()
-    } catch (e) {
-      setV2ImportStatus(e instanceof Error ? e.message : String(e))
-    } finally {
-      setV2Importing(false)
     }
   }
 
@@ -829,32 +786,6 @@ function DataBackupSection() {
             </div>
           ))}
         </div>
-      </section>
-
-      <section className="p-4 rounded-lg border border-neutral-800 bg-neutral-900/40">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-400/90 mb-1">
-          Import from Prabhupāda Connect v2
-        </h3>
-        <p className="text-xs text-neutral-400 mb-3 leading-relaxed">
-          Restore bookmarks, 8-color highlights, notes, and reading history from a v2 <code>.vdbbackup</code> file (or plain <code>.json</code> export).
-          This merges safely into your existing data without overwriting your current work.
-        </p>
-        <div className="flex flex-wrap gap-2 items-center">
-          <button
-            type="button"
-            disabled={v2Importing}
-            onClick={() => void runPickAndImportV2()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-50"
-          >
-            <FolderOpen size={14} /> Browse &amp; Select v2 Backup File…
-          </button>
-          {v2BackupPath && (
-            <span className="text-xs text-neutral-400 font-mono truncate max-w-sm">
-              {v2BackupPath}
-            </span>
-          )}
-        </div>
-        {v2ImportStatus && <p className="text-xs text-emerald-400 font-medium mt-2.5 break-all">{v2ImportStatus}</p>}
       </section>
     </div>
   )
