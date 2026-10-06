@@ -8,9 +8,9 @@ A fast, clutter-free, 100% offline desktop library and study application for the
 
 You do **not** need any programming or technical knowledge to install and use Prabhupāda Connect on your Windows computer. Everything (all 55+ books, letters, and Vaiṣṇava songs) is already packed inside a single setup file!
 
-### Step 1: Download the Installer
-👉 **[Click Here to Download `Prabhupada Connect_0.2.0_x64-setup.exe` (Latest Windows Installer)](https://github.com/itzabhinav01/prabhupada-connect-v3/releases/latest)**
-*(On the page that opens, scroll down to **Assets** and click on **`Prabhupada.Connect_0.2.0_x64-setup.exe`** or **`Prabhupada Connect_0.2.0_x64-setup.exe`** to download it).*
+### Step 1: Download the Installer (1-Click Direct Download)
+👉 **[Click Here to Download `Prabhupada.Connect_0.2.0_x64-setup.exe` Directly (Windows 10 / 11)](https://github.com/itzabhinav01/prabhupada-connect-v3/releases/download/v0.2.0/Prabhupada.Connect_0.2.0_x64-setup.exe)**
+*(Or view the [GitHub Releases Page](https://github.com/itzabhinav01/prabhupada-connect-v3/releases/latest)).*
 
 ### Step 2: Run the Setup File
 1. Open your **Downloads** folder and double-click **`Prabhupada Connect_0.2.0_x64-setup.exe`**.
