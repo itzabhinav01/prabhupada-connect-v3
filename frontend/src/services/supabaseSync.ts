@@ -94,23 +94,54 @@ export async function resetPasswordWithOtp(
   otpToken: string,
   newPassword: string,
 ) {
-  let trimmedToken = otpToken.trim()
-  if (trimmedToken.includes('token=')) {
-    const m = /token=([a-zA-Z0-9_-]+)/.exec(trimmedToken)
-    if (m) trimmedToken = m[1]
+  let raw = otpToken.trim()
+  const client = getClient(creds)
+
+  // 1. If user pasted the redirect URL from their browser (http://localhost:3000/#access_token=...)
+  if (raw.includes('access_token=')) {
+    const accessMatch = /[#&?]access_token=([^&]+)/.exec(raw)
+    const refreshMatch = /[#&?]refresh_token=([^&]+)/.exec(raw)
+    if (accessMatch) {
+      const accessToken = decodeURIComponent(accessMatch[1])
+      const refreshToken = refreshMatch ? decodeURIComponent(refreshMatch[1]) : ''
+      const { error: sessionErr } = await client.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      })
+      if (sessionErr) throw sessionErr
+      const { data: updateData, error: updateErr } = await client.auth.updateUser({
+        password: newPassword,
+      })
+      if (updateErr) throw updateErr
+      return updateData.user
+    }
   }
 
-  const client = getClient(creds)
-  if (trimmedToken.length > 20) {
+  // 2. If user pasted the full verification link from email (https://.../auth/v1/verify?token=...)
+  if (raw.includes('token=')) {
+    const m = /[?&]token=([^&]+)/.exec(raw) || /token=([^&]+)/.exec(raw)
+    if (m) raw = decodeURIComponent(m[1])
+  }
+
+  // 3. Verify OTP using either token_hash (long hex string from link) or 6-digit numeric OTP
+  if (raw.length > 20) {
     const { error: verifyErr } = await client.auth.verifyOtp({
-      token_hash: trimmedToken,
+      token_hash: raw,
       type: 'recovery',
     })
-    if (verifyErr) throw verifyErr
+    if (verifyErr) {
+      // Fallback try with email + token
+      const { error: fallbackErr } = await client.auth.verifyOtp({
+        email: email.trim(),
+        token: raw,
+        type: 'recovery',
+      })
+      if (fallbackErr) throw verifyErr
+    }
   } else {
     const { error: verifyErr } = await client.auth.verifyOtp({
       email: email.trim(),
-      token: trimmedToken,
+      token: raw,
       type: 'recovery',
     })
     if (verifyErr) throw verifyErr

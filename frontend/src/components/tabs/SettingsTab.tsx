@@ -971,7 +971,7 @@ function CloudSyncSection() {
       return
     }
     if (!otpCode.trim()) {
-      setStatus('Please enter the 6-digit recovery code from your email.')
+      setStatus('Please enter or paste the recovery link (or 6-digit code) from your email.')
       return
     }
     if (newPassword.length < 6) {
@@ -983,7 +983,7 @@ function CloudSyncSection() {
       return
     }
     setBusy(true)
-    setStatus('Verifying recovery code and setting your new password…')
+    setStatus('Verifying recovery link/code and setting your new password…')
     try {
       const user = await resetPasswordWithOtp(creds, email.trim(), otpCode.trim(), newPassword)
       setUserEmail(user?.email ?? email.trim())
@@ -1139,8 +1139,10 @@ function CloudSyncSection() {
                   ← Back to Sign In
                 </button>
               </div>
-              <p className="text-xs text-neutral-400 mb-4">
-                A 6-digit recovery code was sent to <strong className="text-neutral-200">{email}</strong>. Enter the code and your new password below:
+              <p className="text-xs text-neutral-400 mb-3 leading-relaxed">
+                Supabase sent a password reset email to <strong className="text-neutral-200">{email}</strong>.
+                <br />
+                <span className="text-amber-300 font-medium">Tip:</span> Right-click the reset link in your email &rarr; <strong className="text-neutral-200">Copy link address</strong>, and paste it directly into the box below (or enter your 6-digit code):
               </p>
               <div className="flex flex-col gap-2.5 max-w-md">
                 <input
@@ -1153,9 +1155,15 @@ function CloudSyncSection() {
                 <input
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value)}
-                  placeholder="6-digit recovery code (e.g. 123456)"
-                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-amber-300 placeholder:text-neutral-600 font-mono tracking-wider focus:outline-none focus:border-amber-500/50"
+                  placeholder="Paste email reset link or enter 6-digit code"
+                  type="text"
+                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-amber-300 placeholder:text-neutral-600 font-mono focus:outline-none focus:border-amber-500/50"
                 />
+                {otpCode.trim().startsWith('http') && (
+                  <p className="text-[11px] text-emerald-400 font-medium -mt-1">
+                    ✓ Reset link detected. Choose your new password below and click Set New Password.
+                  </p>
+                )}
                 <input
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
