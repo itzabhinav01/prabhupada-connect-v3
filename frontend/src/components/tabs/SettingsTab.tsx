@@ -52,7 +52,6 @@ import {
   resetPasswordWithOtp,
   sendPasswordResetEmail,
   signIn,
-  signInWithMagicLink,
   signOut,
   signUp,
   syncNow,
@@ -946,19 +945,6 @@ function CloudSyncSection() {
     }
   }
 
-  const handleMagicLink = async () => {
-    if (!creds || !email.trim()) return
-    setBusy(true)
-    try {
-      await signInWithMagicLink(creds, email.trim())
-      setStatus('Magic link sent — check your email.')
-    } catch (e) {
-      setStatus(formatSyncError(e))
-    } finally {
-      setBusy(false)
-    }
-  }
-
   // Step 1: Send recovery code (matching v2 SendPasswordResetEmailAsync)
   const handleSendRecoveryCode = async () => {
     if (!creds || !email.trim()) {
@@ -966,11 +952,11 @@ function CloudSyncSection() {
       return
     }
     setBusy(true)
-    setStatus(`Sending 6-digit recovery code to ${email.trim()}…`)
+    setStatus(`Sending password reset instructions to ${email.trim()}…`)
     try {
       await sendPasswordResetEmail(creds, email.trim())
       setAuthMode('forgot_step2')
-      setStatus(`6-digit code sent! Check your inbox (or spam) at ${email.trim()}, then enter the code below with your new password.`)
+      setStatus(`Verification email sent! Check your inbox (or spam) at ${email.trim()} for the 6-digit code or reset link, then enter it below.`)
     } catch (e) {
       setStatus(formatSyncError(e))
     } finally {
@@ -1276,6 +1262,16 @@ function CloudSyncSection() {
                   >
                     Back to Sign In
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('forgot_step1')
+                      setStatus(null)
+                    }}
+                    className="px-3 py-2 rounded-md text-xs text-neutral-400 border border-neutral-800 hover:bg-neutral-900"
+                  >
+                    Forgot Password?
+                  </button>
                 </div>
               </div>
             </div>
@@ -1329,30 +1325,22 @@ function CloudSyncSection() {
                   <button
                     type="button"
                     onClick={() => {
-                      setAuthMode('forgot_step1')
-                      setStatus(null)
-                    }}
-                    className="px-3 py-2 rounded-md text-xs text-amber-400/90 hover:text-amber-300 hover:underline"
-                  >
-                    Forgot Password?
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
                       setAuthMode('signup')
                       setStatus(null)
                     }}
                     className="px-3 py-2 rounded-md text-xs text-neutral-300 border border-neutral-700 hover:bg-neutral-800"
                   >
-                    Create Account
+                    Create Account (Sign Up)
                   </button>
                   <button
                     type="button"
-                    disabled={!creds || !email.trim() || busy}
-                    onClick={() => void handleMagicLink()}
-                    className="px-3 py-2 rounded-md text-xs text-neutral-500 border border-neutral-800 hover:bg-neutral-900 disabled:opacity-40"
+                    onClick={() => {
+                      setAuthMode('forgot_step1')
+                      setStatus(null)
+                    }}
+                    className="px-3 py-2 rounded-md text-xs text-neutral-300 border border-neutral-700 hover:bg-neutral-800"
                   >
-                    Magic Link
+                    Forgot Password?
                   </button>
                 </div>
               </div>
