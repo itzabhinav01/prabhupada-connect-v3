@@ -809,6 +809,8 @@ function CloudSyncSection() {
   const setAnonKey = useSyncSettingsStore((s) => s.setAnonKey)
   const intervalMinutes = useSyncSettingsStore((s) => s.intervalMinutes)
   const setIntervalMinutes = useSyncSettingsStore((s) => s.setIntervalMinutes)
+  const resetToDefaultProject = useSyncSettingsStore((s) => s.resetToDefaultProject)
+  const credentials = useSyncSettingsStore((s) => s.credentials)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [status, setStatus] = useState<string | null>(null)
@@ -816,22 +818,36 @@ function CloudSyncSection() {
   const [lastResult, setLastResult] = useState<SyncResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [deviceId, setDeviceId] = useState('')
+  const [showAdvancedServer, setShowAdvancedServer] = useState(false)
 
   useEffect(() => {
     void getDeviceId().then(setDeviceId)
   }, [])
 
-  const creds: SupabaseCredentials | null = url && anonKey ? { url, anonKey } : null
+  const creds: SupabaseCredentials | null = credentials()
 
   useEffect(() => {
-    if (!url || !anonKey) {
+    const activeCreds = credentials()
+    if (!activeCreds) {
       setUserEmail(null)
       return
     }
-    void getCurrentUser({ url, anonKey }).then((user) => {
+    void getCurrentUser(activeCreds).then((user) => {
       setUserEmail(user?.email ?? null)
     })
-  }, [url, anonKey])
+  }, [url, anonKey, credentials])
+
+  const runImmediateSync = async (activeCreds: SupabaseCredentials, prefixMsg?: string) => {
+    const { pull, push } = await syncNow(activeCreds)
+    setLastResult(push)
+    const errors = [...pull.errors, ...push.errors]
+    const summary = `Pulled ${pull.pulledHighlights} highlights, ${pull.pulledNotes} notes, ${pull.pulledBookmarks} bookmarks; pushed ${push.pushedHighlights} highlights, ${push.pushedNotes} notes, ${push.pushedBookmarks} bookmarks.`
+    setStatus(
+      errors.length > 0
+        ? `${prefixMsg ? `${prefixMsg} — ` : ''}Synced with warnings: ${errors.join('; ')}`
+        : `${prefixMsg ? `${prefixMsg} — ` : ''}Cloud & Local in sync! ${summary}`,
+    )
+  }
 
   const handleTest = async () => {
     if (!creds) return
@@ -843,30 +859,30 @@ function CloudSyncSection() {
 
   const handleCopySqlSchema = () => {
     void navigator.clipboard.writeText(V2_BASE_SCHEMA_SQL)
-    setStatus('Complete Supabase SQL schema copied to clipboard! Paste & Run it in your Supabase SQL Editor.')
+    setStatus('Complete Supabase SQL schema copied to clipboard!')
   }
 
-  const handleSwitchProject = async () => {
+  const handleResetDefaultServer = async () => {
     if (creds) {
       try {
         await signOut(creds)
       } catch {
-        // ignore signOut errors when switching projects
+        // ignore
       }
     }
     setUserEmail(null)
-    setUrl('')
-    setAnonKey('')
-    setStatus('Cleared current Supabase project credentials. Paste your new Project URL and Anon Key above.')
+    resetToDefaultProject()
+    setStatus('Restored default Prabhupāda Connect Cloud Server.')
   }
 
   const handleSignIn = async () => {
-    if (!creds) return
+    if (!creds || !email.trim() || !password) return
     setBusy(true)
+    setStatus('Signing in and syncing your highlights, notes & bookmarks…')
     try {
-      const user = await signIn(creds, email, password)
+      const user = await signIn(creds, email.trim(), password)
       setUserEmail(user?.email ?? null)
-      setStatus('Signed in.')
+      await runImmediateSync(creds, 'Signed in')
     } catch (e) {
       setStatus(e instanceof Error ? e.message : String(e))
     } finally {
@@ -875,11 +891,17 @@ function CloudSyncSection() {
   }
 
   const handleSignUp = async () => {
-    if (!creds) return
+    if (!creds || !email.trim() || !password) return
     setBusy(true)
+    setStatus('Creating your cloud account…')
     try {
-      await signUp(creds, email, password)
-      setStatus('Account created — check your email to confirm, then sign in.')
+      const { user, session } = await signUp(creds, email.trim(), password)
+      if (session && user) {
+        setUserEmail(user.email ?? email.trim())
+        await runImmediateSync(creds, 'Account created & signed in')
+      } else {
+        setStatus('Account created! Check your email for a confirmation link, or click Sign In if confirmation is disabled.')
+      }
     } catch (e) {
       setStatus(e instanceof Error ? e.message : String(e))
     } finally {
@@ -888,10 +910,10 @@ function CloudSyncSection() {
   }
 
   const handleMagicLink = async () => {
-    if (!creds) return
+    if (!creds || !email.trim()) return
     setBusy(true)
     try {
-      await signInWithMagicLink(creds, email)
+      await signInWithMagicLink(creds, email.trim())
       setStatus('Magic link sent — check your email.')
     } catch (e) {
       setStatus(e instanceof Error ? e.message : String(e))
@@ -904,21 +926,15 @@ function CloudSyncSection() {
     if (!creds) return
     await signOut(creds)
     setUserEmail(null)
-    setStatus('Signed out.')
+    setStatus('Signed out. Your local highlights, notes, and bookmarks remain safely on this device.')
   }
 
   const handleSyncNow = async () => {
     if (!creds) return
     setBusy(true)
+    setStatus('Syncing highlights, notes, bookmarks & history…')
     try {
-      const { pull, push } = await syncNow(creds)
-      setLastResult(push)
-      const errors = [...pull.errors, ...push.errors]
-      setStatus(
-        errors.length > 0
-          ? `Synced with errors: ${errors.join('; ')}`
-          : `Sync complete — pulled ${pull.pulledHighlights + pull.pulledNotes + pull.pulledBookmarks + pull.pulledHistory} rows, pushed ${push.pushedHighlights + push.pushedNotes + push.pushedBookmarks + push.pushedHistory}.`,
-      )
+      await runImmediateSync(creds)
     } catch (e) {
       setStatus(e instanceof Error ? e.message : String(e))
     } finally {
@@ -933,126 +949,102 @@ function CloudSyncSection() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="rounded-lg border border-neutral-800 p-4 bg-neutral-900/40">
-        <p className="text-xs text-neutral-400 leading-relaxed mb-3">
-          Connect any free <span className="text-amber-300 font-medium">Supabase</span> project to sync your bookmarks,
-          8-color highlights, study notes, and reading history across devices:
-        </p>
-        <ol className="list-decimal list-inside text-xs text-neutral-500 space-y-1 mb-3">
-          <li>Create a new project at <code className="text-neutral-300">https://supabase.com/dashboard</code>.</li>
-          <li>Click <strong className="text-neutral-300">Copy Complete SQL Schema</strong> below, paste it into your Supabase <strong className="text-neutral-300">SQL Editor → New Query</strong>, and click <strong className="text-neutral-300">Run</strong> (or run <code className="text-neutral-300">database/supabase_schema_v3.sql</code>).</li>
-          <li>In Supabase <strong className="text-neutral-300">Project Settings → API</strong>, copy your <strong className="text-neutral-300">Project URL</strong> and <strong className="text-neutral-300">anon public</strong> key and paste them below.</li>
-        </ol>
-        <div className="flex flex-col gap-2">
-          <input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Project URL (https://xxxx.supabase.co)"
-            className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
-          />
-          <input
-            value={anonKey}
-            onChange={(e) => setAnonKey(e.target.value)}
-            placeholder="Anon public key (eyJ...)"
-            type="password"
-            className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
-          />
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <button
-              type="button"
-              disabled={!creds || busy}
-              onClick={() => void handleTest()}
-              className="px-3 py-1.5 rounded-md text-xs text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 disabled:opacity-40"
-            >
-              Test Connection
-            </button>
-            <button
-              type="button"
-              onClick={handleCopySqlSchema}
-              className="px-3 py-1.5 rounded-md text-xs text-neutral-300 border border-neutral-800 hover:bg-neutral-900"
-            >
-              Copy Complete SQL Schema
-            </button>
-            {(url || anonKey) && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleSwitchProject()}
-                className="px-3 py-1.5 rounded-md text-xs text-red-300/90 border border-red-500/25 hover:bg-red-500/10 disabled:opacity-40"
-              >
-                Switch / Clear Project
-              </button>
-            )}
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center justify-between rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div>
+            <div className="text-xs font-semibold text-emerald-300">
+              Prabhupāda Connect Cloud Ready
+            </div>
+            <div className="text-[11px] text-neutral-400">
+              Highlights, notes, bookmarks &amp; reading history sync automatically across Cloud &amp; Local (3-day free-tier keep-alive active).
+            </div>
           </div>
         </div>
-      </section>
+      </div>
 
       {!userEmail ? (
-        <section className="rounded-lg border border-neutral-800 p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-3">Sign In / Sign Up</h3>
-          <div className="flex flex-col gap-2">
+        <section className="rounded-lg border border-neutral-800 p-5 bg-neutral-900/40">
+          <h3 className="text-sm font-semibold text-neutral-100 mb-1">Sign In or Create a Cloud Account</h3>
+          <p className="text-xs text-neutral-400 mb-4">
+            Enter your email and password below to sync all your bookmarks, 8-color highlights, and realization notes between this computer and the cloud.
+          </p>
+          <div className="flex flex-col gap-2.5 max-w-md">
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
+              placeholder="Email address"
+              type="email"
               className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
             />
             <input
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && email.trim() && password && !busy) {
+                  void handleSignIn()
+                }
+              }}
+              placeholder="Password (min. 6 characters)"
               type="password"
               className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
             />
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 pt-1">
               <button
                 type="button"
-                disabled={!creds || busy}
+                disabled={!creds || !email.trim() || !password || busy}
                 onClick={() => void handleSignIn()}
-                className="px-3 py-1.5 rounded-md text-xs text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 disabled:opacity-40"
+                className="px-4 py-2 rounded-md text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-40"
               >
-                Sign In
+                {busy ? 'Working…' : 'Sign In & Sync'}
               </button>
               <button
                 type="button"
-                disabled={!creds || busy}
+                disabled={!creds || !email.trim() || !password || busy}
                 onClick={() => void handleSignUp()}
-                className="px-3 py-1.5 rounded-md text-xs text-neutral-300 border border-neutral-800 hover:bg-neutral-900 disabled:opacity-40"
+                className="px-4 py-2 rounded-md text-xs font-medium text-neutral-200 border border-neutral-700 hover:bg-neutral-800 disabled:opacity-40"
               >
-                Sign Up
+                Create Account (Sign Up)
               </button>
               <button
                 type="button"
-                disabled={!creds || busy}
+                disabled={!creds || !email.trim() || busy}
                 onClick={() => void handleMagicLink()}
-                className="px-3 py-1.5 rounded-md text-xs text-neutral-300 border border-neutral-800 hover:bg-neutral-900 disabled:opacity-40"
+                className="px-3 py-2 rounded-md text-xs text-neutral-400 border border-neutral-800 hover:bg-neutral-900 disabled:opacity-40"
               >
-                Magic Link
+                Send Magic Link
               </button>
             </div>
           </div>
         </section>
       ) : (
-        <section className="rounded-lg border border-neutral-800 p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-3">Connected</h3>
-          <p className="text-sm text-neutral-300 mb-1">{userEmail}</p>
-          <p className="text-xs text-neutral-600 mb-3">Device: {deviceId}</p>
-          <div className="flex flex-wrap gap-2">
+        <section className="rounded-lg border border-neutral-800 p-5 bg-neutral-900/40">
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-400 mb-0.5">Signed In &amp; Syncing</h3>
+              <p className="text-sm font-medium text-neutral-100">{userEmail}</p>
+              <p className="text-[11px] text-neutral-500 mt-0.5">Device ID: {deviceId}</p>
+            </div>
             <button
               type="button"
               disabled={busy}
               onClick={() => void handleSyncNow()}
-              className="px-3 py-1.5 rounded-md text-xs text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 disabled:opacity-40"
+              className="px-4 py-2 rounded-md text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-40"
             >
-              Sync Now
+              {busy ? 'Syncing…' : 'Sync Now'}
             </button>
+          </div>
+          <p className="text-xs text-neutral-400 mb-3">
+            Any highlight, note, or bookmark you create or edit is automatically synced between local storage and cloud.
+          </p>
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={handleExportDiagnostics}
               className="px-3 py-1.5 rounded-md text-xs text-neutral-300 border border-neutral-800 hover:bg-neutral-900"
             >
-              Export Sync Diagnostics
+              Copy Sync Diagnostics
             </button>
             <button
               type="button"
@@ -1064,12 +1056,12 @@ function CloudSyncSection() {
           </div>
           {lastResult && (
             <p className="text-xs text-neutral-500 mt-3">
-              Last sync: {lastResult.pushedHighlights} highlights, {lastResult.pushedNotes} notes, {lastResult.pushedBookmarks}{' '}
+              Last push: {lastResult.pushedHighlights} highlights, {lastResult.pushedNotes} notes, {lastResult.pushedBookmarks}{' '}
               bookmarks, {lastResult.pushedHistory} history entries.
             </p>
           )}
           <div className="flex items-center gap-3 mt-4 pt-4 border-t border-neutral-800">
-            <span className="text-xs text-neutral-400">Auto-sync</span>
+            <span className="text-xs text-neutral-400">Background auto-sync frequency</span>
             <select
               value={intervalMinutes}
               onChange={(e) => setIntervalMinutes(Number(e.target.value))}
@@ -1085,7 +1077,66 @@ function CloudSyncSection() {
         </section>
       )}
 
-      {status && <div className="text-xs text-neutral-400 bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2">{status}</div>}
+      {status && (
+        <div className="text-xs text-neutral-300 bg-neutral-900 border border-neutral-800 rounded-md px-3.5 py-2.5">
+          {status}
+        </div>
+      )}
+
+      <section className="rounded-lg border border-neutral-800/80 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowAdvancedServer((v) => !v)}
+          className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-neutral-500 hover:text-neutral-300 bg-neutral-900/30 hover:bg-neutral-900/60"
+        >
+          <span>Advanced: Custom Supabase Server Configuration (Optional)</span>
+          {showAdvancedServer ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+        {showAdvancedServer && (
+          <div className="p-4 border-t border-neutral-800 flex flex-col gap-2.5 bg-neutral-950/40">
+            <p className="text-xs text-neutral-500 leading-relaxed">
+              The official Prabhupāda Connect Supabase cloud server is already pre-configured out of the box. Only change these fields if you are a developer connecting a custom self-hosted Supabase project.
+            </p>
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="Project URL (https://xxxx.supabase.co)"
+              className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-xs text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
+            />
+            <input
+              value={anonKey}
+              onChange={(e) => setAnonKey(e.target.value)}
+              placeholder="Anon public key (eyJ...)"
+              type="password"
+              className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-xs text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
+            />
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <button
+                type="button"
+                disabled={!creds || busy}
+                onClick={() => void handleTest()}
+                className="px-3 py-1.5 rounded-md text-xs text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 disabled:opacity-40"
+              >
+                Test Server Connection
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleResetDefaultServer()}
+                className="px-3 py-1.5 rounded-md text-xs text-neutral-300 border border-neutral-800 hover:bg-neutral-900"
+              >
+                Reset to Built-In Cloud Server
+              </button>
+              <button
+                type="button"
+                onClick={handleCopySqlSchema}
+                className="px-3 py-1.5 rounded-md text-xs text-neutral-400 border border-neutral-800 hover:bg-neutral-900"
+              >
+                Copy SQL Schema
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   )
 }

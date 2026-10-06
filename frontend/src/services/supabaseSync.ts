@@ -31,6 +31,8 @@ import {
 import { buildHighlightSegments } from '../components/study/highlightable'
 import { useHighlightPaletteStore } from '../stores/useHighlightPaletteStore'
 import { useNavigationStore } from '../stores/useNavigationStore'
+import { useStudyStore } from '../stores/useStudyStore'
+import { normalizeSupabaseUrl, useSyncSettingsStore } from '../stores/useSyncSettingsStore'
 import type { Bookmark, Highlight, HistoryEntry, Note } from '../types/study'
 import type { VerseRecord } from '../types/scripture'
 
@@ -43,11 +45,13 @@ let client: SupabaseClient | null = null
 let clientCredentials: SupabaseCredentials | null = null
 
 function getClient(creds: SupabaseCredentials): SupabaseClient {
-  if (client && clientCredentials?.url === creds.url && clientCredentials?.anonKey === creds.anonKey) {
+  const cleanUrl = normalizeSupabaseUrl(creds.url)
+  const cleanKey = creds.anonKey.trim()
+  if (client && clientCredentials?.url === cleanUrl && clientCredentials?.anonKey === cleanKey) {
     return client
   }
-  client = createClient(creds.url, creds.anonKey)
-  clientCredentials = creds
+  client = createClient(cleanUrl, cleanKey)
+  clientCredentials = { url: cleanUrl, anonKey: cleanKey }
   return client
 }
 
@@ -64,7 +68,7 @@ export async function getDeviceId(): Promise<string> {
 export async function signUp(creds: SupabaseCredentials, email: string, password: string) {
   const { data, error } = await getClient(creds).auth.signUp({ email, password })
   if (error) throw error
-  return data.user
+  return { user: data.user, session: data.session }
 }
 
 export async function signIn(creds: SupabaseCredentials, email: string, password: string) {
@@ -686,13 +690,66 @@ export async function pullAll(creds: SupabaseCredentials): Promise<PullResult> {
   return { pulledHighlights, pulledNotes, pulledBookmarks, pulledHistory, errors }
 }
 
+/** Refreshes the in-memory Zustand study store (`useStudyStore`) after pulling
+ * cloud changes so newly synced highlights, notes, bookmarks, and history appear
+ * immediately in the active reader and tabs without reloading the app. */
+async function refreshLocalStudyStoreAfterSync() {
+  const study = useStudyStore.getState()
+  const activeHighlightVerses = Object.keys(study.highlightsByVerse)
+  const activeNoteVerses = Object.keys(study.notesByVerse)
+  await Promise.all([
+    study.loadBookmarks(),
+    study.loadAllHighlights(),
+    study.loadAllNotes(),
+    study.loadHistory(),
+    ...activeHighlightVerses.map((v) => study.loadHighlightsForVerse(v)),
+    ...activeNoteVerses.map((v) => study.loadNotesForVerse(v)),
+  ])
+}
+
 /** "Sync Now" runs both directions: pull first (so remote-only rows from
  * other devices land locally), then push (so local-only rows and any
  * edits made here reach Supabase) — matching the bidirectional contract. */
 export async function syncNow(creds: SupabaseCredentials): Promise<{ pull: PullResult; push: SyncResult }> {
   const pull = await pullAll(creds)
   const push = await pushAll(creds)
+  await refreshLocalStudyStoreAfterSync().catch(() => {})
   return { pull, push }
+}
+
+let bgSyncTimer: ReturnType<typeof setTimeout> | null = null
+
+/** Triggers a silent background bidirectional sync 2 seconds after any local
+ * highlight, note, or bookmark change if the user is signed in. */
+export function scheduleBackgroundSync() {
+  if (bgSyncTimer) clearTimeout(bgSyncTimer)
+  bgSyncTimer = setTimeout(() => {
+    bgSyncTimer = null
+    const creds = useSyncSettingsStore.getState().credentials()
+    if (!creds) return
+    void getCurrentUser(creds)
+      .then((user) => {
+        if (user) return syncNow(creds)
+      })
+      .catch(() => {})
+  }, 2000)
+}
+
+/** Lightweight keep-alive ping to prevent Supabase Free Tier from pausing after
+ * 7 days of inactivity. Queries `vb_schema_info` (publicly readable via RLS)
+ * and records `lastSupabasePingAt`. */
+export async function pingSupabaseKeepAlive(creds: SupabaseCredentials): Promise<boolean> {
+  try {
+    const supabase = getClient(creds)
+    const { error } = await supabase.from('vb_schema_info').select('version').limit(1)
+    if (!error) {
+      await saveSetting('lastSupabasePingAt', JSON.stringify(new Date().toISOString())).catch(() => {})
+      return true
+    }
+    return false
+  } catch {
+    return false
+  }
 }
 
 export async function testConnection(creds: SupabaseCredentials): Promise<{ ok: boolean; message: string }> {

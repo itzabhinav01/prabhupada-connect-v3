@@ -6,7 +6,7 @@ import { SearchModal } from '../search/SearchModal'
 import { NotesDrawer } from '../study/NotesDrawer'
 import { TabBar } from '../tabs/TabBar'
 import { TabContentRouter } from '../tabs/TabContentRouter'
-import { syncNow } from '../../services/supabaseSync'
+import { getCurrentUser, pingSupabaseKeepAlive, syncNow } from '../../services/supabaseSync'
 import { useInPageFindStore } from '../../stores/useInPageFindStore'
 import { useNavigationStore } from '../../stores/useNavigationStore'
 import { useReaderStore } from '../../stores/useReaderStore'
@@ -21,23 +21,36 @@ import { GLOBAL_SEARCH_INPUT_ID, Sidebar } from './Sidebar'
 
 const THEME_ORDER: Theme[] = ['dark', 'oled', 'light', 'sepia', 'sandalwood', 'forest', 'ocean', 'custom']
 
-/** Fires a silent background `syncNow` on the interval saved in Settings →
- * Cloud Sync (`useSyncSettingsStore`, persisted as `syncIntervalMinutes`) —
- * `0` leaves auto-sync off. Reschedules immediately whenever the interval
- * changes (no restart needed), and no-ops quietly if the project URL/anon
- * key aren't set or the user isn't signed in (`syncNow` itself already
- * reports that as a `errors: ['Not signed in']` result rather than
- * throwing). */
+/** Fires a startup keep-alive ping (preventing Supabase Free Tier from pausing),
+ * runs an immediate bidirectional `syncNow` on startup if signed in, and
+ * schedules periodic background syncs according to `intervalMinutes`. */
 function useAutoSync() {
+  const url = useSyncSettingsStore((s) => s.url)
+  const anonKey = useSyncSettingsStore((s) => s.anonKey)
   const intervalMinutes = useSyncSettingsStore((s) => s.intervalMinutes)
   const credentials = useSyncSettingsStore((s) => s.credentials)
+
+  useEffect(() => {
+    const creds = credentials()
+    if (!creds) return
+    // 1. Always send a lightweight keep-alive query so Supabase Free Tier stays active
+    void pingSupabaseKeepAlive(creds)
+    // 2. If user is already signed in, sync immediately on app launch
+    void getCurrentUser(creds)
+      .then((user) => {
+        if (user) return syncNow(creds)
+      })
+      .catch(() => {})
+  }, [url, anonKey, credentials])
 
   useEffect(() => {
     if (!intervalMinutes) return
     const timer = setInterval(
       () => {
         const creds = credentials()
-        if (creds) void syncNow(creds).catch(() => {})
+        if (!creds) return
+        void pingSupabaseKeepAlive(creds)
+        void syncNow(creds).catch(() => {})
       },
       intervalMinutes * 60 * 1000,
     )

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 import * as api from '../services/api'
+import { scheduleBackgroundSync } from '../services/supabaseSync'
 import type { Bookmark, Highlight, HistoryEntry, Note } from '../types/study'
 
 interface StudyState {
@@ -63,6 +64,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   addHighlight: async (verseId, color, textRangeStart, textRangeEnd, selectedText, field = null) => {
     await api.saveHighlight({ verseId, color, textRangeStart, textRangeEnd, selectedText, field })
     await get().loadHighlightsForVerse(verseId)
+    scheduleBackgroundSync()
   },
 
   removeHighlight: async (id: number, verseId: string) => {
@@ -74,6 +76,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       },
       allHighlights: s.allHighlights.filter((h) => h.id !== id),
     }))
+    scheduleBackgroundSync()
   },
 
   loadAllHighlights: async () => {
@@ -95,6 +98,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         : s.notesByVerse,
       allNotes: [note, ...s.allNotes],
     }))
+    scheduleBackgroundSync()
     return note
   },
 
@@ -106,6 +110,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         : s.notesByVerse,
       allNotes: s.allNotes.map((n) => (n.id === id ? note : n)),
     }))
+    scheduleBackgroundSync()
     return note
   },
 
@@ -119,6 +124,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
           : s.notesByVerse,
       allNotes: s.allNotes.filter((n) => n.id !== id),
     }))
+    scheduleBackgroundSync()
   },
 
   loadAllNotes: async () => {
@@ -149,6 +155,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         bookmarks: [bookmark, ...s.bookmarks.filter((b) => b.verseId !== verseId)],
       }))
     }
+    scheduleBackgroundSync()
   },
 
   removeBookmarkById: async (verseId: string) => {
@@ -158,21 +165,25 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       next.delete(verseId)
       return { bookmarkedVerseIds: next, bookmarks: s.bookmarks.filter((b) => b.verseId !== verseId) }
     })
+    scheduleBackgroundSync()
   },
 
   renameBookmarkCollection: async (oldTag, newTag) => {
     await api.renameBookmarkCollection(oldTag, newTag)
     await get().loadBookmarks()
+    scheduleBackgroundSync()
   },
 
   clearBookmarkCollection: async (tag) => {
     await api.clearBookmarkCollection(tag)
     await get().loadBookmarks()
+    scheduleBackgroundSync()
   },
 
   moveBookmarkToCollection: async (verseId, tag) => {
     await api.moveBookmarkToCollection(verseId, tag)
     await get().loadBookmarks()
+    scheduleBackgroundSync()
   },
 
   logHistory: async (verseId, bookTitle, verseRef) => {

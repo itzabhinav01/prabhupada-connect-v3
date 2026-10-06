@@ -124,53 +124,34 @@ The compiled executable will be located at:
 
 ---
 
-## ☁️ Connecting to a New Supabase Project (Step-by-Step)
+## ☁️ Cloud Sync & Automatic Free-Tier Keep-Alive (Every 3 Days)
 
-Prabhupāda Connect v3 is 100% self-hostable with any free **Supabase** account. You can connect or switch Supabase projects at any time without rebuilding the app, or set default credentials via `frontend/.env`.
+### Zero-Setup Cloud Sync for Users
+Prabhupāda Connect v3 comes **pre-connected out of the box** to the official cloud sync backend (`https://zaiovlzihmgoswzacgpj.supabase.co`).
+1. Open **Settings (⚙) → Cloud Sync**.
+2. Enter your **Email** and **Password** and click **Create Account (Sign Up)** or **Sign In & Sync**.
+3. Your **8-color highlights**, **study notes**, **bookmarks & collections**, and **reading history** automatically sync bidirectionally:
+   - Immediately upon signing in
+   - Automatically on every app launch
+   - Automatically in the background (2 seconds after any local highlight, note, or bookmark edit, plus every 5 minutes)
 
-### Step 1: Create a New Supabase Project
-1. Sign in at [https://supabase.com/dashboard](https://supabase.com/dashboard) and click **New project**.
-2. Choose an organization, give your project a name (e.g., `prabhupada-connect-sync`), set a database password, pick a region close to you, and click **Create new project**.
+### Automatic 3-Day Free-Tier Keep-Alive
+Because Supabase Free Tier projects pause after 7 days of inactivity, two automatic keep-alive mechanisms are built in:
+1. **GitHub Actions Cron Job ([`.github/workflows/supabase-keepalive.yml`](./.github/workflows/supabase-keepalive.yml))**:
+   - Runs automatically on GitHub's cloud runners **every 3 days** (`0 6 */3 * *`) — even when all user computers are turned off — and executes a live PostgREST query against `public.vb_schema_info` to keep the database active 24/7/365.
+   - Can also be triggered manually anytime from the repository's **Actions → Supabase Free-Tier Keep-Alive → Run workflow** tab.
+2. **In-App Startup & Background Keep-Alive (`pingSupabaseKeepAlive`)**:
+   - Every time the desktop app launches (even before a user signs in), it sends a lightweight query to `vb_schema_info` to reset the Supabase activity timer.
 
-### Step 2: Run the Database Schema SQL
-1. Once your project finishes provisioning, open **SQL Editor** in the left sidebar of your Supabase Dashboard and click **New query**.
-2. Open [`database/supabase_schema_v3.sql`](./database/supabase_schema_v3.sql) from this repository (or click **Copy Complete SQL Schema** directly inside the app under **Settings → Cloud Sync** or **User Guide → 9. Supabase Cloud Sync Setup Guide**).
-3. Paste the entire SQL script into the Supabase SQL Editor and click **Run** (`Ctrl+Enter`).
-4. Verify it returns `Success. No rows returned`. This creates all 6 tables (`vb_schema_info`, `vb_bookmark_collections`, `vb_bookmarks`, `vb_highlights`, `vb_notes`, `vb_reading_history`) with Row-Level Security (`auth.uid() = user_id`) enabled so every user can only read/write their own data.
+---
 
-### Step 3: Configure Authentication (Optional Recommended Tweak)
-1. In your Supabase Dashboard, go to **Authentication → Providers → Email**.
-2. Ensure **Enable Email provider** is turned **ON**.
-3. *(Optional for instant sign-up without email verification)*: Toggle **Confirm email** to **OFF** if you want new accounts to sign in immediately without clicking a confirmation link first.
+## 🛠️ Self-Hosting Your Own Custom Supabase Project (Optional for Developers)
 
-### Step 4: Get Your Project URL & Anon Public Key
-1. In your Supabase Dashboard, go to **Project Settings (⚙) → API** (or **Data API**).
-2. Copy two values:
-   - **Project URL**: `https://xxxxxxxxxxxxxxxxxxxx.supabase.co`
-   - **Project API Keys → `anon` `public`**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` *(Never use the `service_role` secret key in the client app)*.
+If a developer wants to connect their own separate Supabase project, they can expand **Advanced: Custom Supabase Server Configuration** in **Settings → Cloud Sync** or follow these steps:
 
-### Step 5: Connect Inside Prabhupāda Connect v3
-You have two ways to supply these credentials:
-
-#### Option A: Directly Inside the Running App (No Rebuild Needed)
-1. Open Prabhupāda Connect v3 and click **Settings (⚙) → Cloud Sync**.
-2. *(If switching from an older project)* Click **Switch / Clear Project**.
-3. Paste your **Project URL** and **Anon public key**.
-4. Click **Test Connection** — you should see `Connected (schema v1)`.
-5. Enter your email & password and click **Sign Up** (first time on the new project) or **Sign In**, then click **Sync Now**!
-
-#### Option B: Pre-Configure Default Credentials for Developers (`frontend/.env`)
-If you are building the app for distribution and want your Supabase project pre-filled by default:
-1. Copy `frontend/.env.example` to `frontend/.env`:
-   ```bash
-   cp frontend/.env.example frontend/.env
-   ```
-2. Fill in your values in `frontend/.env`:
-   ```env
-   VITE_SUPABASE_URL=https://xxxxxxxxxxxxxxxxxxxx.supabase.co
-   VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   ```
-3. Rebuild the frontend (`npm run build`) and Tauri binary.
+1. Create a new project at [https://supabase.com/dashboard](https://supabase.com/dashboard).
+2. Open **SQL Editor → New query**, paste the contents of [`database/supabase_schema_v3.sql`](./database/supabase_schema_v3.sql) (or click **Copy SQL Schema** in the app), and click **Run**.
+3. Copy your **Project URL** (`https://xxxx.supabase.co`) and **anon public** key from **Project Settings → API**, and paste them into **Advanced: Custom Supabase Server Configuration** (or `frontend/.env`).
 
 ---
 

@@ -48,9 +48,10 @@ const DEFAULTS: PersistedSettings = {
   focusModeDefault: false,
   customPalette: DEFAULT_CUSTOM_PALETTE,
   highlightPalette: DEFAULT_HIGHLIGHT_PALETTE,
-  supabaseUrl: '',
-  supabaseAnonKey: '',
-  syncIntervalMinutes: 0,
+  supabaseUrl: 'https://zaiovlzihmgoswzacgpj.supabase.co',
+  supabaseAnonKey:
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphaW92bHppaG1nb3N3emFjZ3BqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyNzYyMTQsImV4cCI6MjEwNjg1MjIxNH0.JHHblI-WlDWjqa5Qpt-fRwDyDl4JW3_5hszeFe5YVf0',
+  syncIntervalMinutes: 5,
   customBookOrder: [],
 }
 

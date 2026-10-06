@@ -1,0 +1,30 @@
+name: Supabase Free-Tier Keep-Alive (Every 3 Days)
+
+on:
+  schedule:
+    # Runs automatically at 06:00 UTC every 3 days so the Supabase free-tier
+    # database never hits the 7-day inactivity pause threshold.
+    - cron: '0 6 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Supabase PostgREST (vb_schema_info) to keep database active
+        env:
+          SUPABASE_URL: 'https://zaiovlzihmgoswzacgpj.supabase.co'
+          SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphaW92bHppaG1nb3N3emFjZ3BqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyNzYyMTQsImV4cCI6MjEwNjg1MjIxNH0.JHHblI-WlDWjqa5Qpt-fRwDyDl4JW3_5hszeFe5YVf0'
+        run: |
+          echo "Sending keep-alive query to Supabase project..."
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/vb_schema_info?select=version,updated_at&limit=1")
+          echo "Response body: $(cat response.json)"
+          echo "HTTP Status: ${HTTP_STATUS}"
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "Supabase keep-alive failed with HTTP status ${HTTP_STATUS}"
+            exit 1
+          fi
+          echo "Supabase free-tier project is awake and active!"

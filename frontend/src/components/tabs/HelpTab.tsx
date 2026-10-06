@@ -357,15 +357,20 @@ export function HelpTab() {
       {
         id: 'supabase-sync',
         category: 'Supabase Sync',
-        title: '9. Supabase Cloud Sync Setup Guide',
+        title: '9. Cloud Sync (Zero-Setup Sign In, Sign Up & Auto-Sync)',
         body: (
           <div className="space-y-2 text-sm text-neutral-300">
+            <p>
+              Cloud Sync is <strong className="text-emerald-300">pre-configured out of the box</strong> — you do not need to set up any server or paste any API keys!
+            </p>
             <ol className="list-decimal list-inside space-y-1">
-              <li>Create a free project at supabase.com.</li>
-              <li>Open the SQL editor and run the schema below (extends v2's own schema with one v3-only table, reading history).</li>
-              <li>In Settings → Cloud Sync, paste your project's URL and anon public key (Project Settings → API), then sign up or sign in.</li>
+              <li>Open <strong className="text-neutral-100">Settings (⚙) → Cloud Sync</strong>.</li>
+              <li>Enter your <strong className="text-neutral-100">Email</strong> and <strong className="text-neutral-100">Password</strong>, then click <strong className="text-amber-300">Create Account (Sign Up)</strong> (first time) or <strong className="text-amber-300">Sign In &amp; Sync</strong>.</li>
+              <li>All your bookmarks, 8-color highlights, realization notes, and reading history automatically sync between your local computer and the cloud whenever you make a change or open the app.</li>
             </ol>
-            <p className="text-neutral-500">Nothing here can be done on your behalf — an AI assistant cannot create a Supabase account or project for you.</p>
+            <p className="text-xs text-neutral-500 pt-1">
+              For developers hosting their own custom Supabase instance, expand <em>Advanced: Custom Supabase Server Configuration</em> inside Settings → Cloud Sync or copy the complete SQL schema below:
+            </p>
             <CopyBlock text={V2_BASE_SCHEMA_SQL} />
           </div>
         ),
