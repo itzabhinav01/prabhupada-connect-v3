@@ -866,6 +866,14 @@ function CloudSyncSection() {
     })
   }, [url, anonKey, credentials])
 
+  const formatSyncError = (e: unknown): string => {
+    const raw = e instanceof Error ? e.message : String(e)
+    if (raw.includes('Failed to fetch') || raw.includes('NetworkError') || raw.includes('network error')) {
+      return `Network connection error: Unable to reach the server at ${creds?.url || 'Supabase'}. Please verify your internet connection.`
+    }
+    return raw
+  }
+
   const runImmediateSync = async (activeCreds: SupabaseCredentials, prefixMsg?: string) => {
     const { pull, push } = await syncNow(activeCreds)
     setLastResult(push)
@@ -913,7 +921,7 @@ function CloudSyncSection() {
       setUserEmail(user?.email ?? null)
       await runImmediateSync(creds, 'Signed in')
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : String(e))
+      setStatus(formatSyncError(e))
     } finally {
       setBusy(false)
     }
@@ -932,7 +940,7 @@ function CloudSyncSection() {
         setStatus('Account created! Check your email for a confirmation link, or click Sign In if confirmation is disabled.')
       }
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : String(e))
+      setStatus(formatSyncError(e))
     } finally {
       setBusy(false)
     }
@@ -945,7 +953,7 @@ function CloudSyncSection() {
       await signInWithMagicLink(creds, email.trim())
       setStatus('Magic link sent — check your email.')
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : String(e))
+      setStatus(formatSyncError(e))
     } finally {
       setBusy(false)
     }
@@ -964,7 +972,7 @@ function CloudSyncSection() {
       setAuthMode('forgot_step2')
       setStatus(`6-digit code sent! Check your inbox (or spam) at ${email.trim()}, then enter the code below with your new password.`)
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : String(e))
+      setStatus(formatSyncError(e))
     } finally {
       setBusy(false)
     }
@@ -1000,7 +1008,7 @@ function CloudSyncSection() {
       setAuthMode('signin')
       await runImmediateSync(creds, 'Password successfully reset! You are now logged in')
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : String(e))
+      setStatus(formatSyncError(e))
     } finally {
       setBusy(false)
     }
@@ -1026,7 +1034,7 @@ function CloudSyncSection() {
       setChangePasswordConfirm('')
       setStatus('Password successfully updated!')
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : String(e))
+      setStatus(formatSyncError(e))
     } finally {
       setBusy(false)
     }
@@ -1047,7 +1055,7 @@ function CloudSyncSection() {
     try {
       await runImmediateSync(creds)
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : String(e))
+      setStatus(formatSyncError(e))
     } finally {
       setBusy(false)
     }

@@ -808,7 +808,11 @@ export async function testConnection(creds: SupabaseCredentials): Promise<{ ok: 
     if (error) return { ok: false, message: error.message }
     return { ok: true, message: 'Connected — schema found.' }
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : String(e) }
+    const raw = e instanceof Error ? e.message : String(e)
+    const msg = raw.includes('Failed to fetch')
+      ? `Connection failed: Unable to reach ${creds.url}. Please check your internet connection.`
+      : raw
+    return { ok: false, message: msg }
   }
 }
 

@@ -76,8 +76,21 @@ export const useSyncSettingsStore = create<SyncSettingsState>((set, get) => ({
  * settings at startup without triggering a redundant save. Falls back to the
  * built-in Supabase project so users can immediately Sign Up / Sign In with zero setup. */
 export function hydrateSyncSettings(url: string, anonKey: string, intervalMinutes: number) {
-  const cleanUrl = normalizeSupabaseUrl(url || DEFAULT_SUPABASE_URL)
-  const cleanKey = (anonKey || DEFAULT_SUPABASE_ANON_KEY).trim()
+  let cleanUrl = normalizeSupabaseUrl(url || DEFAULT_SUPABASE_URL)
+  let cleanKey = (anonKey || DEFAULT_SUPABASE_ANON_KEY).trim()
+
+  const isInvalidUrl = !cleanUrl || cleanUrl.includes('test-project.supabase.co') || !cleanUrl.startsWith('http')
+  const isInvalidKey = !cleanKey || cleanKey.includes('test-anon') || cleanKey.length < 20
+
+  if (isInvalidUrl) {
+    cleanUrl = DEFAULT_SUPABASE_URL
+    void saveSetting('supabaseUrl', JSON.stringify(DEFAULT_SUPABASE_URL))
+  }
+  if (isInvalidKey) {
+    cleanKey = DEFAULT_SUPABASE_ANON_KEY
+    void saveSetting('supabaseAnonKey', JSON.stringify(DEFAULT_SUPABASE_ANON_KEY))
+  }
+
   useSyncSettingsStore.setState({
     url: cleanUrl,
     anonKey: cleanKey,

@@ -110,5 +110,23 @@ export async function loadInitialSettings(): Promise<PersistedSettings> {
     }
   }
 
+  // Automatically heal stale test/dummy Supabase endpoints from prior test runs
+  if (
+    !result.supabaseUrl ||
+    result.supabaseUrl.includes('test-project.supabase.co') ||
+    !result.supabaseUrl.startsWith('http')
+  ) {
+    result.supabaseUrl = DEFAULTS.supabaseUrl
+    void saveSetting('supabaseUrl', JSON.stringify(DEFAULTS.supabaseUrl))
+  }
+  if (
+    !result.supabaseAnonKey ||
+    result.supabaseAnonKey.includes('test-anon') ||
+    result.supabaseAnonKey.length < 20
+  ) {
+    result.supabaseAnonKey = DEFAULTS.supabaseAnonKey
+    void saveSetting('supabaseAnonKey', JSON.stringify(DEFAULTS.supabaseAnonKey))
+  }
+
   return result
 }
