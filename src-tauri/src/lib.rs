@@ -7,8 +7,8 @@ pub mod utils;
 use tauri::Manager;
 
 use commands::backup::{
-    create_snapshot, export_backup, export_notes_html, export_notes_markdown, export_notes_obsidian, import_backup,
-    list_backups, list_snapshots, read_v2_backup_file, restore_snapshot,
+    create_snapshot, export_backup, export_notes_html, export_notes_markdown, export_notes_obsidian, get_backups_dir,
+    get_exports_dir, import_backup, list_backups, list_snapshots, read_v2_backup_file, restore_snapshot,
 };
 use commands::concordance::get_concordance;
 use commands::direct_reference::{get_direct_reference_suggestions, resolve_direct_reference};
@@ -80,6 +80,7 @@ fn app_health_check(state: tauri::State<AppState>) -> Result<String, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             app_health_check,
             get_books,
@@ -132,6 +133,8 @@ pub fn run() {
             remove_book_from_folder,
             reorder_books_in_folder,
             export_backup,
+            get_backups_dir,
+            get_exports_dir,
             list_backups,
             import_backup,
             read_v2_backup_file,

@@ -641,6 +641,22 @@ export async function exportBackup(): Promise<string> {
   }
 }
 
+export async function getBackupsDir(): Promise<string> {
+  try {
+    return await invoke<string>('get_backups_dir')
+  } catch (e) {
+    throw new ApiError('getBackupsDir', e)
+  }
+}
+
+export async function getExportsDir(): Promise<string> {
+  try {
+    return await invoke<string>('get_exports_dir')
+  } catch (e) {
+    throw new ApiError('getExportsDir', e)
+  }
+}
+
 export async function listBackups(): Promise<BackupFileInfo[]> {
   try {
     return await invoke<BackupFileInfo[]>('list_backups')

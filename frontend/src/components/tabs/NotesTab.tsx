@@ -1,8 +1,8 @@
 import { openPath } from '@tauri-apps/plugin-opener'
 import { useEffect, useMemo, useState } from 'react'
-import { Download, FileArchive, Plus, Printer, Search, Trash2 } from 'lucide-react'
+import { Download, FileArchive, FolderOpen, Plus, Printer, Search, Trash2 } from 'lucide-react'
 
-import { exportNotesHtml, exportNotesMarkdown, exportNotesObsidian } from '../../services/api'
+import { exportNotesHtml, exportNotesMarkdown, exportNotesObsidian, getExportsDir } from '../../services/api'
 import { useStudyStore } from '../../stores/useStudyStore'
 import { useUIStore } from '../../stores/useUIStore'
 import { deriveNavigationTarget } from '../../utils/recordKey'
@@ -70,6 +70,12 @@ export function NotesTab() {
     openNotesDrawerForNote(note.id)
   }
 
+  const [exportsDir, setExportsDir] = useState<string | null>(null)
+
+  useEffect(() => {
+    void getExportsDir().then(setExportsDir).catch(() => {})
+  }, [])
+
   const handleExportObsidian = async () => {
     setExportStatus('Exporting…')
     try {
@@ -98,6 +104,16 @@ export function NotesTab() {
       setExportStatus(`Opened in browser: ${path}`)
     } catch (e) {
       setExportStatus(e instanceof Error ? e.message : 'Export failed')
+    }
+  }
+
+  const handleOpenFolder = async () => {
+    const dir = exportsDir ?? (await getExportsDir().catch(() => null))
+    if (!dir) return
+    try {
+      await openPath(dir)
+    } catch (e) {
+      setExportStatus(`Could not open directory: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -173,7 +189,18 @@ export function NotesTab() {
             ))}
           </div>
         )}
-        {exportStatus && <p className="text-xs text-neutral-500 mt-2">{exportStatus}</p>}
+        {exportStatus && (
+          <div className="flex items-center gap-2 mt-2 text-xs bg-neutral-900 border border-neutral-800 rounded-md px-3 py-1.5 text-neutral-300">
+            <span className="truncate flex-1 font-mono text-[11px] text-amber-300/90">{exportStatus}</span>
+            <button
+              type="button"
+              onClick={() => void handleOpenFolder()}
+              className="text-amber-400 hover:text-amber-300 underline shrink-0 flex items-center gap-1 font-sans text-xs"
+            >
+              <FolderOpen size={12} /> Open Folder
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 flex min-h-0">

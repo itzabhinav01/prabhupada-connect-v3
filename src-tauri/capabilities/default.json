@@ -6,9 +6,16 @@
   "permissions": [
     "core:default",
     "opener:default",
+    "dialog:default",
     {
       "identifier": "opener:allow-open-path",
-      "allow": [{ "path": "$APPDATA/exports/*" }, { "path": "$APPDATA/imported_pdfs/*" }]
+      "allow": [
+        { "path": "$APPDATA/**" },
+        { "path": "$APPDATA/exports/*" },
+        { "path": "$APPDATA/backups/*" },
+        { "path": "$APPDATA/snapshots/*" },
+        { "path": "$APPDATA/imported_pdfs/*" }
+      ]
     }
   ]
 }

@@ -155,13 +155,9 @@ export async function importV2Backup(payload: V2BackupPayload): Promise<V2Import
   }
 
   for (const n of (payload.Notes ?? []).filter((n) => !n.DeletedUtc)) {
-    if (!n.RecordKey) {
-      result.skippedGeneralNotes++
-      continue
-    }
     try {
       await createNote({
-        verseId: n.RecordKey,
+        verseId: n.RecordKey ?? null,
         title: n.Title ?? null,
         contentText: n.Content,
         contentJson: JSON.stringify({
@@ -171,7 +167,7 @@ export async function importV2Backup(payload: V2BackupPayload): Promise<V2Import
       })
       result.importedNotes++
     } catch (e) {
-      result.errors.push(`note ${n.RecordKey}: ${e instanceof Error ? e.message : String(e)}`)
+      result.errors.push(`note ${n.RecordKey ?? 'standalone'}: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 

@@ -57,17 +57,35 @@ pub fn list_backups(app: AppHandle) -> Result<Vec<BackupFileInfo>, String> {
 }
 
 #[tauri::command]
-pub fn import_backup(app: AppHandle, state: State<AppState>, filename: String, mode: String) -> Result<String, String> {
-    // The filename comes from this app's own `list_backups` result (never
-    // arbitrary user text used as a path), but reject any path separator
-    // defensively anyway so this can never escape the backups directory.
-    if filename.contains('/') || filename.contains('\\') || filename.contains("..") {
-        return Err("invalid backup filename".to_string());
-    }
+pub fn get_backups_dir(app: AppHandle) -> Result<String, String> {
     let dir = db::resolve_backup_dir(&app)?;
-    let path = dir.join(&filename);
-    let json = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let data: BackupData = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+    Ok(dir.display().to_string())
+}
+
+#[tauri::command]
+pub fn get_exports_dir(app: AppHandle) -> Result<String, String> {
+    let dir = db::resolve_export_dir(&app)?;
+    Ok(dir.display().to_string())
+}
+
+#[tauri::command]
+pub fn import_backup(app: AppHandle, state: State<AppState>, filename: String, mode: String) -> Result<String, String> {
+    let path = if filename.contains('/') || filename.contains('\\') {
+        std::path::PathBuf::from(&filename)
+    } else {
+        if filename.contains("..") {
+            return Err("invalid backup filename".to_string());
+        }
+        let dir = db::resolve_backup_dir(&app)?;
+        dir.join(&filename)
+    };
+
+    if !path.exists() {
+        return Err(format!("Backup file not found: {}", path.display()));
+    }
+
+    let json = std::fs::read_to_string(&path).map_err(|e| format!("Could not read backup file: {e}"))?;
+    let data: BackupData = serde_json::from_str(&json).map_err(|e| format!("Invalid backup file format: {e}"))?;
 
     let import_mode = match mode.as_str() {
         "replace" => ImportMode::Replace,

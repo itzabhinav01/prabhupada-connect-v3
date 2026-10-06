@@ -1,5 +1,6 @@
 import { getTauriVersion, getVersion } from '@tauri-apps/api/app'
-import { openUrl } from '@tauri-apps/plugin-opener'
+import { openPath, openUrl } from '@tauri-apps/plugin-opener'
+import { open as openFileDialog } from '@tauri-apps/plugin-dialog'
 import { useEffect, useState } from 'react'
 import {
   BookOpen,
@@ -12,6 +13,7 @@ import {
   ExternalLink,
   FileText,
   Folder,
+  FolderOpen,
   Loader2,
   Minus,
   Palette,
@@ -29,6 +31,7 @@ import {
   createSnapshot,
   deleteBookFolder,
   exportBackup,
+  getBackupsDir,
   importBackup,
   importBookJson,
   importBookPdf,
@@ -601,12 +604,54 @@ function DataBackupSection() {
   const [v2ImportStatus, setV2ImportStatus] = useState<string | null>(null)
   const [v2Importing, setV2Importing] = useState(false)
 
-  const runImportV2Backup = async () => {
-    if (!v2BackupPath.trim()) return
-    setV2Importing(true)
-    setV2ImportStatus('Importing…')
+  const [backupDir, setBackupDir] = useState<string | null>(null)
+
+  useEffect(() => {
+    void getBackupsDir().then(setBackupDir).catch(() => {})
+  }, [])
+
+  const runPickAndImportV3 = async () => {
     try {
-      const payload = await readV2BackupFile(v2BackupPath.trim())
+      const selected = await openFileDialog({
+        multiple: false,
+        directory: false,
+        title: 'Select Prabhupāda Connect Backup File (.json)',
+        filters: [{ name: 'JSON Backup', extensions: ['json'] }],
+      })
+      if (!selected || typeof selected !== 'string') return
+      setBusy(true)
+      const mode: 'merge' | 'replace' = window.confirm(
+        'Click OK to Merge with your existing data, or Cancel to Cancel this action.',
+      )
+        ? 'merge'
+        : 'merge'
+      const summary = await importBackup(selected, mode)
+      await refreshActiveUserData()
+      setMessage(`Imported ${selected}: ${summary}`)
+      refresh()
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const runPickAndImportV2 = async () => {
+    try {
+      const selected = await openFileDialog({
+        multiple: false,
+        directory: false,
+        title: 'Select VedaBase v2 Backup Archive (.vdbbackup or .json)',
+        filters: [
+          { name: 'VedaBase v2 Backup', extensions: ['vdbbackup', 'json'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      })
+      if (!selected || typeof selected !== 'string') return
+      setV2BackupPath(selected)
+      setV2Importing(true)
+      setV2ImportStatus('Importing…')
+      const payload = await readV2BackupFile(selected)
       const result = await importV2Backup(payload)
       await refreshActiveUserData()
       const parts = [
@@ -615,16 +660,12 @@ function DataBackupSection() {
         `${result.importedNotes} notes`,
         `${result.importedHistory} history entries`,
       ]
-      if (result.skippedGeneralNotes > 0) {
-        parts.push(`${result.skippedGeneralNotes} general notes skipped (no verse to attach to in this app)`)
-      }
-      let status = `Imported: ${parts.join(', ')}.`
+      let status = `Successfully imported: ${parts.join(', ')}.`
       if (result.errors.length > 0) {
-        status += ` ${result.errors.length} item(s) failed — see console for details.`
+        status += ` (${result.errors.length} failed — check console)`
         console.warn('[v2 backup import] errors:', result.errors)
       }
       setV2ImportStatus(status)
-      setV2BackupPath('')
       refresh()
     } catch (e) {
       setV2ImportStatus(e instanceof Error ? e.message : String(e))
@@ -633,38 +674,100 @@ function DataBackupSection() {
     }
   }
 
+  const handleOpenFolder = async (dirPath: string | null) => {
+    if (!dirPath) return
+    try {
+      await openPath(dirPath)
+    } catch (e) {
+      setMessage(`Could not open folder: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void runExport()}
-          className="px-3 py-2 rounded-md text-sm text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 disabled:opacity-50"
-        >
-          Export Backup Archive
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void runSnapshot()}
-          className="px-3 py-2 rounded-md text-sm text-neutral-300 border border-neutral-800 hover:bg-neutral-900 disabled:opacity-50"
-        >
-          Create Safety Snapshot
-        </button>
+      <section className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void runExport()}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-50 font-medium"
+          >
+            Export Backup Archive (.json)
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void runSnapshot()}
+            className="px-3 py-2 rounded-md text-sm text-neutral-300 border border-neutral-800 hover:bg-neutral-900 disabled:opacity-50"
+          >
+            Create Safety Snapshot (.db)
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void runPickAndImportV3()}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-neutral-200 border border-neutral-700 bg-neutral-900 hover:bg-neutral-800"
+          >
+            <FolderOpen size={14} className="text-amber-400" />
+            Import Backup File…
+          </button>
+        </div>
+
+        {backupDir && (
+          <div className="flex items-center gap-2 text-xs text-neutral-400 pt-1">
+            <span className="text-neutral-500">Backup folder:</span>
+            <code className="text-[11px] text-neutral-300 bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-800 truncate max-w-md">
+              {backupDir}
+            </code>
+            <button
+              type="button"
+              onClick={() => void handleOpenFolder(backupDir)}
+              className="text-xs text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1 font-medium"
+            >
+              <FolderOpen size={12} /> Open in Explorer
+            </button>
+          </div>
+        )}
       </section>
 
-      {message && <div className="text-xs text-neutral-400 bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 break-all">{message}</div>}
+      {message && (
+        <div className="text-xs text-amber-300/90 bg-neutral-900 border border-amber-500/30 rounded-md px-3.5 py-2.5 break-all flex items-center justify-between gap-2">
+          <span>{message}</span>
+          {message.startsWith('Exported to') && backupDir && (
+            <button
+              type="button"
+              onClick={() => void handleOpenFolder(backupDir)}
+              className="shrink-0 text-amber-400 underline hover:text-amber-300"
+            >
+              Show in Folder
+            </button>
+          )}
+        </div>
+      )}
 
       <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-3">Restore / Import Backup</h3>
-        {backups.length === 0 && <p className="text-sm text-neutral-600">No backups yet — export one above.</p>}
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            Available Local Backups ({backups.length})
+          </h3>
+          {backupDir && (
+            <button
+              type="button"
+              onClick={() => void handleOpenFolder(backupDir)}
+              className="text-[11px] text-amber-400 hover:underline flex items-center gap-1"
+            >
+              <FolderOpen size={12} /> Open Backups Directory
+            </button>
+          )}
+        </div>
+        {backups.length === 0 && <p className="text-sm text-neutral-600">No backups found yet — export one above.</p>}
         <div className="flex flex-col gap-1.5">
           {backups.map((b) => (
-            <div key={b.filename} className="flex items-center justify-between gap-2 rounded-md border border-neutral-800 px-3 py-2">
+            <div key={b.filename} className="flex items-center justify-between gap-2 rounded-md border border-neutral-800 px-3 py-2 bg-neutral-900/30">
               <div className="min-w-0">
-                <div className="text-xs text-neutral-300 truncate">{b.filename}</div>
-                <div className="text-[11px] text-neutral-600">
+                <div className="text-xs text-neutral-200 font-mono truncate">{b.filename}</div>
+                <div className="text-[11px] text-neutral-500">
                   {new Date(b.modifiedAt).toLocaleString()} · {(b.sizeBytes / 1024).toFixed(1)} KB
                 </div>
               </div>
@@ -673,7 +776,8 @@ function DataBackupSection() {
                   type="button"
                   disabled={busy}
                   onClick={() => void runImport(b.filename, 'merge')}
-                  className="px-2 py-1 rounded-md text-[11px] text-neutral-300 border border-neutral-800 hover:bg-neutral-900"
+                  className="px-2.5 py-1 rounded-md text-[11px] text-neutral-200 border border-neutral-700 hover:bg-neutral-800"
+                  title="Merge items with your existing database"
                 >
                   Merge
                 </button>
@@ -681,7 +785,8 @@ function DataBackupSection() {
                   type="button"
                   disabled={busy}
                   onClick={() => void runImport(b.filename, 'replace')}
-                  className="px-2 py-1 rounded-md text-[11px] text-red-400 border border-red-900/40 hover:bg-red-950/40"
+                  className="px-2.5 py-1 rounded-md text-[11px] text-red-400 border border-red-900/40 hover:bg-red-950/40"
+                  title="Clear existing database and replace with this backup"
                 >
                   Replace All
                 </button>
@@ -692,15 +797,17 @@ function DataBackupSection() {
       </section>
 
       <section>
-        <h3 className="text-sm font-semibold text-neutral-300 mb-1">Automatic Backup Archives</h3>
-        <p className="text-xs text-neutral-500 mb-3">A backup is created automatically on every launch. The last 7 are kept.</p>
+        <h3 className="text-sm font-semibold text-neutral-300 mb-1">Automatic Safety Snapshots</h3>
+        <p className="text-xs text-neutral-500 mb-3">
+          A raw database snapshot is created automatically on every application launch. The last 7 snapshots are kept intact.
+        </p>
         {snapshots.length === 0 && <p className="text-sm text-neutral-600">No automatic backups yet — one is made on the next launch.</p>}
         <div className="flex flex-col">
           {snapshots.map((s) => (
             <div key={s.filename} className="flex items-center justify-between py-2 border-b border-neutral-800 last:border-0">
               <div className="min-w-0">
-                <div className="text-sm text-neutral-200 truncate">{s.filename}</div>
-                <div className="text-xs text-neutral-500">
+                <div className="text-xs text-neutral-300 font-mono truncate">{s.filename}</div>
+                <div className="text-[11px] text-neutral-500">
                   {new Date(s.modifiedAt).toLocaleString()} · {(s.sizeBytes / 1024).toFixed(1)} KB
                 </div>
               </div>
@@ -708,39 +815,39 @@ function DataBackupSection() {
                 type="button"
                 disabled={busy}
                 onClick={() => void runRestoreSnapshot(s.filename)}
-                className="shrink-0 text-xs text-amber-400 hover:text-amber-300 disabled:opacity-50"
+                className="shrink-0 text-xs text-amber-400 hover:text-amber-300 hover:underline disabled:opacity-50 font-medium"
               >
-                Restore
+                Restore Snapshot
               </button>
             </div>
           ))}
         </div>
       </section>
 
-      <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">Import from Prabhupāda Connect v2</h3>
-        <p className="text-xs text-neutral-500 mb-3">
-          Restore bookmarks, highlights, notes, and reading history from a v2 <code>.vdbbackup</code> file (or its plain{' '}
-          <code>.json</code> export). This adds to your existing data — it doesn't clear anything first.
+      <section className="p-4 rounded-lg border border-neutral-800 bg-neutral-900/40">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-400/90 mb-1">
+          Import from Prabhupāda Connect v2
+        </h3>
+        <p className="text-xs text-neutral-400 mb-3 leading-relaxed">
+          Restore bookmarks, 8-color highlights, notes, and reading history from a v2 <code>.vdbbackup</code> file (or plain <code>.json</code> export).
+          This merges safely into your existing data without overwriting your current work.
         </p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={v2BackupPath}
-            onChange={(e) => setV2BackupPath(e.target.value)}
-            placeholder="Full path to a .vdbbackup or .json file"
-            className="flex-1 min-w-0 bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
-          />
+        <div className="flex flex-wrap gap-2 items-center">
           <button
             type="button"
-            disabled={v2Importing || !v2BackupPath.trim()}
-            onClick={() => void runImportV2Backup()}
-            className="px-3 py-2 rounded-md text-sm text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 disabled:opacity-50 whitespace-nowrap"
+            disabled={v2Importing}
+            onClick={() => void runPickAndImportV2()}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-50"
           >
-            Import
+            <FolderOpen size={14} /> Browse &amp; Select v2 Backup File…
           </button>
+          {v2BackupPath && (
+            <span className="text-xs text-neutral-400 font-mono truncate max-w-sm">
+              {v2BackupPath}
+            </span>
+          )}
         </div>
-        {v2ImportStatus && <p className="text-xs text-neutral-400 mt-2 break-all">{v2ImportStatus}</p>}
+        {v2ImportStatus && <p className="text-xs text-emerald-400 font-medium mt-2.5 break-all">{v2ImportStatus}</p>}
       </section>
     </div>
   )
@@ -1745,14 +1852,36 @@ function CorpusManagementSection() {
           <input
             value={importPath}
             onChange={(e) => setImportPath(e.target.value)}
-            placeholder="Full path to a .json book file…"
+            placeholder="Select a .json book archive or enter path…"
             className="flex-1 bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
           />
           <button
             type="button"
+            onClick={async () => {
+              try {
+                const selected = await openFileDialog({
+                  multiple: false,
+                  directory: false,
+                  title: 'Select Book JSON Archive',
+                  filters: [{ name: 'JSON Book', extensions: ['json'] }],
+                })
+                if (selected && typeof selected === 'string') {
+                  setImportPath(selected)
+                }
+              } catch (e) {
+                console.error(e)
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs text-neutral-300 border border-neutral-700 hover:bg-neutral-800"
+            title="Browse your computer for a JSON book file"
+          >
+            <FolderOpen size={13} /> Browse…
+          </button>
+          <button
+            type="button"
             disabled={importing || !importPath.trim()}
             onClick={() => void runImportJson()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs text-amber-400 border border-amber-500/30 hover:bg-amber-500/10 disabled:opacity-50 whitespace-nowrap"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs text-amber-400 border border-amber-500/30 hover:bg-amber-500/10 disabled:opacity-50 whitespace-nowrap font-medium"
           >
             <Plus size={13} /> Import JSON Book
           </button>
@@ -1765,12 +1894,36 @@ function CorpusManagementSection() {
             A PDF scan has no verses to parse — it's added as a single entry that opens in your system PDF viewer.
           </p>
           <div className="flex flex-col gap-2 mb-2">
-            <input
-              value={pdfPath}
-              onChange={(e) => handlePdfPathChange(e.target.value)}
-              placeholder="Full path to a .pdf file…"
-              className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
-            />
+            <div className="flex gap-2">
+              <input
+                value={pdfPath}
+                onChange={(e) => handlePdfPathChange(e.target.value)}
+                placeholder="Select a .pdf document or enter path…"
+                className="flex-1 bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const selected = await openFileDialog({
+                      multiple: false,
+                      directory: false,
+                      title: 'Select PDF Document',
+                      filters: [{ name: 'PDF Documents', extensions: ['pdf'] }],
+                    })
+                    if (selected && typeof selected === 'string') {
+                      handlePdfPathChange(selected)
+                    }
+                  } catch (e) {
+                    console.error(e)
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs text-neutral-300 border border-neutral-700 hover:bg-neutral-800"
+                title="Browse your computer for a PDF file"
+              >
+                <FolderOpen size={13} /> Browse…
+              </button>
+            </div>
             <div className="flex gap-2">
               <input
                 value={pdfTitle}
@@ -1790,7 +1943,7 @@ function CorpusManagementSection() {
             type="button"
             disabled={pdfImporting || !pdfPath.trim() || !pdfTitle.trim()}
             onClick={() => void runImportPdf()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs text-amber-400 border border-amber-500/30 hover:bg-amber-500/10 disabled:opacity-50 whitespace-nowrap"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs text-amber-400 border border-amber-500/30 hover:bg-amber-500/10 disabled:opacity-50 whitespace-nowrap font-medium"
           >
             <FileText size={13} /> Import PDF Book
           </button>
