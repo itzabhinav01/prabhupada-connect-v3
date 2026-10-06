@@ -22,6 +22,7 @@ async function bootstrap() {
   useReaderStore.setState({
     showTransliteration: settings.showTransliteration,
     showPronunciationGuide: settings.showPronunciationGuide,
+    showBacklinks: settings.showBacklinks ?? false,
     focusModeDefault: settings.focusModeDefault,
   })
   hydrateHighlightPalette(settings.highlightPalette)

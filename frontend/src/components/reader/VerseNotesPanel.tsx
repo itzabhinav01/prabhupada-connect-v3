@@ -33,6 +33,7 @@ import {
 
 import * as api from '../../services/api'
 import { useStudyStore } from '../../stores/useStudyStore'
+import { useReaderStore } from '../../stores/useReaderStore'
 import { useTabStore } from '../../stores/useTabStore'
 import { useOpenReaderForVerse } from '../tabs/useOpenReaderForVerse'
 import { deriveNavigationTarget } from '../../utils/recordKey'
@@ -47,6 +48,7 @@ export function VerseNotesPanel({ verseId, reference }: { verseId: string; refer
   const deleteNote = useStudyStore((s) => s.deleteNote)
   const openReaderForVerse = useOpenReaderForVerse()
   const openUtilityTab = useTabStore((s) => s.openUtilityTab)
+  const showBacklinks = useReaderStore((s) => s.showBacklinks)
 
   const [backlinks, setBacklinks] = useState<api.NoteBacklink[]>([])
   const [backlinksOpen, setBacklinksOpen] = useState(true)
@@ -80,6 +82,12 @@ export function VerseNotesPanel({ verseId, reference }: { verseId: string; refer
     setEditingId(null)
     void loadNotesForVerse(verseId)
 
+    if (!showBacklinks) {
+      setBacklinks([])
+      setLoadingBacklinks(false)
+      return
+    }
+
     let isMounted = true
     setLoadingBacklinks(true)
     void api
@@ -99,7 +107,7 @@ export function VerseNotesPanel({ verseId, reference }: { verseId: string; refer
     return () => {
       isMounted = false
     }
-  }, [verseId, reference, loadNotesForVerse])
+  }, [verseId, reference, showBacklinks, loadNotesForVerse])
 
   const openSourceVerse = (sourceVerseId: string) => {
     const target = deriveNavigationTarget(sourceVerseId)
@@ -826,101 +834,103 @@ export function VerseNotesPanel({ verseId, reference }: { verseId: string; refer
         </div>
       )}
 
-      {/* Bidirectional Link Matrix / Backlinks Section */}
-      <div className="mt-5 border-t border-neutral-800/60 pt-3.5">
-        <button
-          type="button"
-          onClick={() => setBacklinksOpen(!backlinksOpen)}
-          className="flex items-center justify-between w-full text-left py-1 px-1.5 rounded-lg hover:bg-neutral-900/60 transition-colors group cursor-pointer"
-        >
-          <div className="flex items-center gap-2">
-            <GitFork size={13} className="text-amber-400 group-hover:text-amber-300 transition-colors" />
-            <span className="text-[11px] font-bold tracking-widest uppercase text-amber-500/90 group-hover:text-amber-400 transition-colors">
-              Notes Referencing This Verse
-            </span>
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 border border-neutral-700/60">
-              {backlinks.length}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 text-neutral-500 group-hover:text-neutral-300 transition-colors">
-            <span className="text-[11px]">{backlinksOpen ? 'Hide' : 'Show'}</span>
-            {backlinksOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </div>
-        </button>
+      {/* Bidirectional Link Matrix / Backlinks Section (controlled by Settings -> showBacklinks, default OFF) */}
+      {showBacklinks && (
+        <div className="mt-5 border-t border-neutral-800/60 pt-3.5">
+          <button
+            type="button"
+            onClick={() => setBacklinksOpen(!backlinksOpen)}
+            className="flex items-center justify-between w-full text-left py-1 px-1.5 rounded-lg hover:bg-neutral-900/60 transition-colors group cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <GitFork size={13} className="text-amber-400 group-hover:text-amber-300 transition-colors" />
+              <span className="text-[11px] font-bold tracking-widest uppercase text-amber-500/90 group-hover:text-amber-400 transition-colors">
+                Notes Referencing This Verse
+              </span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 border border-neutral-700/60">
+                {backlinks.length}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-neutral-500 group-hover:text-neutral-300 transition-colors">
+              <span className="text-[11px]">{backlinksOpen ? 'Hide' : 'Show'}</span>
+              {backlinksOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </div>
+          </button>
 
-        {backlinksOpen && (
-          <div className="mt-2.5 space-y-2.5">
-            {loadingBacklinks ? (
-              <div className="rounded-lg border border-neutral-800/60 bg-neutral-900/20 p-3 text-center text-xs text-neutral-500">
-                Scanning notes for backlinks…
-              </div>
-            ) : backlinks.length === 0 ? (
-              <div className="rounded-lg border border-neutral-800/40 bg-neutral-900/20 p-3 text-center">
-                <p className="text-xs text-neutral-400 italic mb-1">
-                  No other notes reference this verse yet.
-                </p>
-                <p className="text-[11px] text-neutral-500">
-                  Mention this verse anywhere using <span className="text-amber-400/90 font-mono">@{reference || verseId}</span> or <span className="text-amber-400/90 font-mono">[[{reference || verseId}]]</span> to see bidirectional connections here.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-2.5">
-                {backlinks.map((b) => (
-                  <article
-                    key={b.id}
-                    className="rounded-lg bg-neutral-900/60 border border-neutral-800/80 p-3 hover:border-amber-500/40 transition-all shadow-sm group"
-                  >
-                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-neutral-800/60">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {b.sourceVerseId ? (
+          {backlinksOpen && (
+            <div className="mt-2.5 space-y-2.5">
+              {loadingBacklinks ? (
+                <div className="rounded-lg border border-neutral-800/60 bg-neutral-900/20 p-3 text-center text-xs text-neutral-500">
+                  Scanning notes for backlinks…
+                </div>
+              ) : backlinks.length === 0 ? (
+                <div className="rounded-lg border border-neutral-800/40 bg-neutral-900/20 p-3 text-center">
+                  <p className="text-xs text-neutral-400 italic mb-1">
+                    No other notes reference this verse yet.
+                  </p>
+                  <p className="text-[11px] text-neutral-500">
+                    Mention this verse anywhere using <span className="text-amber-400/90 font-mono">@{reference || verseId}</span> or <span className="text-amber-400/90 font-mono">[[{reference || verseId}]]</span> to see bidirectional connections here.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2.5">
+                  {backlinks.map((b) => (
+                    <article
+                      key={b.id}
+                      className="rounded-lg bg-neutral-900/60 border border-neutral-800/80 p-3 hover:border-amber-500/40 transition-all shadow-sm group"
+                    >
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-neutral-800/60">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {b.sourceVerseId ? (
+                            <button
+                              type="button"
+                              onClick={() => openSourceVerse(b.sourceVerseId!)}
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors cursor-pointer"
+                              title={`Jump to source verse ${b.sourceVerseId}`}
+                            >
+                              <ExternalLink size={10} /> Note on {b.sourceVerseId}
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-neutral-800 text-neutral-400 border border-neutral-700/60">
+                              Standalone Note
+                            </span>
+                          )}
+                          <h5 className="text-xs font-semibold text-neutral-200 truncate">
+                            {b.sourceTitle || 'Untitled Realization'}
+                          </h5>
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-neutral-500 shrink-0">
+                          <span className="px-1.5 py-0.5 rounded bg-neutral-950 text-neutral-400 border border-neutral-800 font-mono text-[9px] uppercase">
+                            {b.linkType}
+                          </span>
+                          <span>
+                            {new Date(b.updatedAt).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </span>
                           <button
                             type="button"
-                            onClick={() => openSourceVerse(b.sourceVerseId!)}
-                            className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors cursor-pointer"
-                            title={`Jump to source verse ${b.sourceVerseId}`}
+                            onClick={openInNotesTab}
+                            className="text-amber-500/80 hover:text-amber-400 transition-colors ml-1 cursor-pointer"
+                            title="Open in Notes Tab"
                           >
-                            <ExternalLink size={10} /> Note on {b.sourceVerseId}
+                            <ExternalLink size={12} />
                           </button>
-                        ) : (
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-neutral-800 text-neutral-400 border border-neutral-700/60">
-                            Standalone Note
-                          </span>
-                        )}
-                        <h5 className="text-xs font-semibold text-neutral-200 truncate">
-                          {b.sourceTitle || 'Untitled Realization'}
-                        </h5>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] text-neutral-500 shrink-0">
-                        <span className="px-1.5 py-0.5 rounded bg-neutral-950 text-neutral-400 border border-neutral-800 font-mono text-[9px] uppercase">
-                          {b.linkType}
-                        </span>
-                        <span>
-                          {new Date(b.updatedAt).toLocaleDateString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={openInNotesTab}
-                          className="text-amber-500/80 hover:text-amber-400 transition-colors ml-1 cursor-pointer"
-                          title="Open in Notes Tab"
-                        >
-                          <ExternalLink size={12} />
-                        </button>
-                      </div>
-                    </div>
 
-                    <div className="text-xs text-neutral-300 leading-relaxed pl-2 border-l-2 border-amber-500/30">
-                      <NoteContentRenderer content={b.excerpt} />
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+                      <div className="text-xs text-neutral-300 leading-relaxed pl-2 border-l-2 border-amber-500/30">
+                        <NoteContentRenderer content={b.excerpt} />
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

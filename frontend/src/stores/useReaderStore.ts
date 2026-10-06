@@ -38,6 +38,7 @@ interface ReaderState {
   showPurport: boolean
   showTransliteration: boolean
   showPronunciationGuide: boolean
+  showBacklinks: boolean
   focusModeDefault: boolean
 
   increaseFontSize: () => void
@@ -50,6 +51,8 @@ interface ReaderState {
   togglePurport: () => void
   toggleTransliteration: () => void
   togglePronunciationGuide: () => void
+  toggleBacklinks: () => void
+  setShowBacklinks: (val: boolean) => void
   setFocusModeDefault: (value: boolean) => void
 }
 
@@ -62,6 +65,7 @@ export const useReaderStore = create<ReaderState>((set, get) => ({
   showPurport: true,
   showTransliteration: true,
   showPronunciationGuide: true,
+  showBacklinks: false,
   focusModeDefault: false,
 
   increaseFontSize: () => {
@@ -102,6 +106,16 @@ export const useReaderStore = create<ReaderState>((set, get) => ({
       debouncedSave('showPronunciationGuide', showPronunciationGuide)
       return { showPronunciationGuide }
     }),
+  toggleBacklinks: () =>
+    set((s) => {
+      const showBacklinks = !s.showBacklinks
+      debouncedSave('showBacklinks', showBacklinks)
+      return { showBacklinks }
+    }),
+  setShowBacklinks: (showBacklinks) => {
+    set({ showBacklinks })
+    debouncedSave('showBacklinks', showBacklinks)
+  },
   setFocusModeDefault: (focusModeDefault) => {
     set({ focusModeDefault })
     debouncedSave('focusModeDefault', focusModeDefault)

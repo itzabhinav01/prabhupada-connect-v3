@@ -15,6 +15,7 @@ export interface PersistedSettings {
   readingMode: ReadingMode
   showTransliteration: boolean
   showPronunciationGuide: boolean
+  showBacklinks: boolean
   focusModeDefault: boolean
   customPalette: CustomPalette
   highlightPalette: HighlightColor[]
@@ -45,6 +46,7 @@ const DEFAULTS: PersistedSettings = {
   readingMode: 'continuous',
   showTransliteration: true,
   showPronunciationGuide: true,
+  showBacklinks: false,
   focusModeDefault: false,
   customPalette: DEFAULT_CUSTOM_PALETTE,
   highlightPalette: DEFAULT_HIGHLIGHT_PALETTE,

@@ -422,6 +422,8 @@ function ContentTogglesSection() {
   const togglePurport = useReaderStore((s) => s.togglePurport)
   const showPronunciationGuide = useReaderStore((s) => s.showPronunciationGuide)
   const togglePronunciationGuide = useReaderStore((s) => s.togglePronunciationGuide)
+  const showBacklinks = useReaderStore((s) => s.showBacklinks)
+  const toggleBacklinks = useReaderStore((s) => s.toggleBacklinks)
 
   return (
     <div>
@@ -441,6 +443,11 @@ function ContentTogglesSection() {
         label="Show Pronunciation & Recitation Guide (Sanskrit Meter)"
         checked={showPronunciationGuide}
         onChange={togglePronunciationGuide}
+      />
+      <ToggleRow
+        label="Show Referencing Notes in Reader (Backlinks)"
+        checked={showBacklinks}
+        onChange={toggleBacklinks}
       />
       <p className="text-xs text-neutral-600 mt-3">Current reading mode: {readingMode}</p>
     </div>
