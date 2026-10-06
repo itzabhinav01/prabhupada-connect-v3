@@ -61,6 +61,7 @@ import {
 import { V2_BASE_SCHEMA_SQL } from './HelpTab'
 import { useHighlightPaletteStore } from '../../stores/useHighlightPaletteStore'
 import { useNavigationStore } from '../../stores/useNavigationStore'
+import { useStudyStore } from '../../stores/useStudyStore'
 import { useSyncSettingsStore } from '../../stores/useSyncSettingsStore'
 import { useTabStore } from '../../stores/useTabStore'
 import {
@@ -524,6 +525,21 @@ function DataBackupSection() {
   useEffect(refresh, [])
   useEffect(refreshSnapshots, [])
 
+  const refreshActiveUserData = async () => {
+    const study = useStudyStore.getState()
+    const activeHighlightVerses = Object.keys(study.highlightsByVerse)
+    const activeNoteVerses = Object.keys(study.notesByVerse)
+    await Promise.all([
+      study.loadBookmarks(),
+      study.loadAllHighlights(),
+      study.loadAllNotes(),
+      study.loadHistory(),
+      useNavigationStore.getState().loadFolders(),
+      ...activeHighlightVerses.map((v) => study.loadHighlightsForVerse(v)),
+      ...activeNoteVerses.map((v) => study.loadNotesForVerse(v)),
+    ])
+  }
+
   const runRestoreSnapshot = async (filename: string) => {
     if (!window.confirm(`Restore "${filename}"? This overwrites your current bookmarks, notes, highlights, and history.`)) {
       return
@@ -531,7 +547,8 @@ function DataBackupSection() {
     setBusy(true)
     try {
       await restoreSnapshot(filename)
-      setMessage(`Restored ${filename}`)
+      await refreshActiveUserData()
+      setMessage(`Restored ${filename} — active bookmarks, notes, highlights & history reloaded.`)
     } catch (e) {
       setMessage(e instanceof Error ? e.message : String(e))
     } finally {
@@ -556,6 +573,7 @@ function DataBackupSection() {
     setBusy(true)
     try {
       const summary = await importBackup(filename, mode)
+      await refreshActiveUserData()
       setMessage(summary)
     } catch (e) {
       setMessage(e instanceof Error ? e.message : String(e))
@@ -588,6 +606,7 @@ function DataBackupSection() {
     try {
       const payload = await readV2BackupFile(v2BackupPath.trim())
       const result = await importV2Backup(payload)
+      await refreshActiveUserData()
       const parts = [
         `${result.importedBookmarks} bookmarks`,
         `${result.importedHighlights} highlights`,
