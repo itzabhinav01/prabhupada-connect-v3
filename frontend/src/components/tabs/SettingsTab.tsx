@@ -49,6 +49,7 @@ import {
   buildDiagnostics,
   getCurrentUser,
   getDeviceId,
+  resetPassword,
   signIn,
   signInWithMagicLink,
   signOut,
@@ -941,6 +942,22 @@ function CloudSyncSection() {
     }
   }
 
+  const handleResetPassword = async () => {
+    if (!creds || !email.trim()) {
+      setStatus('Please enter your email address above to receive a password reset link.')
+      return
+    }
+    setBusy(true)
+    try {
+      await resetPassword(creds, email.trim())
+      setStatus('Password reset email sent! Check your inbox to reset your password.')
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const handleSignOut = async () => {
     if (!creds) return
     await signOut(creds)
@@ -1031,8 +1048,18 @@ function CloudSyncSection() {
                 disabled={!creds || !email.trim() || busy}
                 onClick={() => void handleMagicLink()}
                 className="px-3 py-2 rounded-md text-xs text-neutral-400 border border-neutral-800 hover:bg-neutral-900 disabled:opacity-40"
+                title="Send a one-time login link to your email"
               >
                 Send Magic Link
+              </button>
+              <button
+                type="button"
+                disabled={!creds || !email.trim() || busy}
+                onClick={() => void handleResetPassword()}
+                className="px-3 py-2 rounded-md text-xs text-amber-400/80 hover:text-amber-300 border border-neutral-800 hover:bg-neutral-900 disabled:opacity-40"
+                title="Send a password reset link to your email"
+              >
+                Forgot Password?
               </button>
             </div>
           </div>

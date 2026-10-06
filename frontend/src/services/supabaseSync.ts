@@ -82,6 +82,11 @@ export async function signInWithMagicLink(creds: SupabaseCredentials, email: str
   if (error) throw error
 }
 
+export async function resetPassword(creds: SupabaseCredentials, email: string) {
+  const { error } = await getClient(creds).auth.resetPasswordForEmail(email)
+  if (error) throw error
+}
+
 export async function signOut(creds: SupabaseCredentials) {
   const { error } = await getClient(creds).auth.signOut()
   if (error) throw error
