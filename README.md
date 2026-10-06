@@ -69,6 +69,8 @@ Want your highlights, notes, and bookmarks saved safely in the cloud and synced 
 3. Simply type your **Email address** and a **Password** (at least 6 characters):
    - First time? Click **Create Account (Sign Up)**.
    - Returning user? Click **Sign In & Sync**.
+   - Forgot your password? Click **Forgot Password?**, enter your email to receive a **6-digit recovery code**, and enter the code with your new password to reset it and log in immediately!
+   - Change your password anytime: When logged in, click **Change Password** under Settings → Cloud Sync.
 4. That's it! Every highlight, note, and bookmark you make on your computer will automatically sync with the cloud.
 
 ---

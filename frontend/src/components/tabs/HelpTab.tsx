@@ -367,6 +367,12 @@ export function HelpTab() {
               <li>Open <strong className="text-neutral-100">Settings (⚙) → Cloud Sync</strong>.</li>
               <li>Enter your <strong className="text-neutral-100">Email</strong> and <strong className="text-neutral-100">Password</strong>, then click <strong className="text-amber-300">Create Account (Sign Up)</strong> (first time) or <strong className="text-amber-300">Sign In &amp; Sync</strong>.</li>
               <li>All your bookmarks, 8-color highlights, realization notes, and reading history automatically sync between your local computer and the cloud whenever you make a change or open the app.</li>
+              <li>
+                <strong className="text-amber-300">Forgot your password?</strong> Click <strong className="text-neutral-100">Forgot Password?</strong> in Settings → Cloud Sync. Enter your email to receive a 6-digit recovery code, then enter the code with your new password to reset it and log in immediately.
+              </li>
+              <li>
+                <strong className="text-amber-300">Change password anytime:</strong> When logged in, click <strong className="text-neutral-100">Change Password</strong> under Settings → Cloud Sync to set a new password.
+              </li>
             </ol>
             <p className="text-xs text-neutral-500 pt-1">
               For developers hosting their own custom Supabase instance, expand <em>Advanced: Custom Supabase Server Configuration</em> inside Settings → Cloud Sync or copy the complete SQL schema below:

@@ -82,9 +82,53 @@ export async function signInWithMagicLink(creds: SupabaseCredentials, email: str
   if (error) throw error
 }
 
-export async function resetPassword(creds: SupabaseCredentials, email: string) {
-  const { error } = await getClient(creds).auth.resetPasswordForEmail(email)
+export async function sendPasswordResetEmail(creds: SupabaseCredentials, email: string) {
+  const { data, error } = await getClient(creds).auth.resetPasswordForEmail(email.trim())
   if (error) throw error
+  return data
+}
+
+export async function resetPasswordWithOtp(
+  creds: SupabaseCredentials,
+  email: string,
+  otpToken: string,
+  newPassword: string,
+) {
+  let trimmedToken = otpToken.trim()
+  if (trimmedToken.includes('token=')) {
+    const m = /token=([a-zA-Z0-9_-]+)/.exec(trimmedToken)
+    if (m) trimmedToken = m[1]
+  }
+
+  const client = getClient(creds)
+  if (trimmedToken.length > 20) {
+    const { error: verifyErr } = await client.auth.verifyOtp({
+      token_hash: trimmedToken,
+      type: 'recovery',
+    })
+    if (verifyErr) throw verifyErr
+  } else {
+    const { error: verifyErr } = await client.auth.verifyOtp({
+      email: email.trim(),
+      token: trimmedToken,
+      type: 'recovery',
+    })
+    if (verifyErr) throw verifyErr
+  }
+
+  const { data: updateData, error: updateErr } = await client.auth.updateUser({
+    password: newPassword,
+  })
+  if (updateErr) throw updateErr
+  return updateData.user
+}
+
+export async function updatePassword(creds: SupabaseCredentials, newPassword: string) {
+  const { data, error } = await getClient(creds).auth.updateUser({
+    password: newPassword,
+  })
+  if (error) throw error
+  return data.user
 }
 
 export async function signOut(creds: SupabaseCredentials) {

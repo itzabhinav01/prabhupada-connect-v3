@@ -49,13 +49,15 @@ import {
   buildDiagnostics,
   getCurrentUser,
   getDeviceId,
-  resetPassword,
+  resetPasswordWithOtp,
+  sendPasswordResetEmail,
   signIn,
   signInWithMagicLink,
   signOut,
   signUp,
   syncNow,
   testConnection,
+  updatePassword,
   type SupabaseCredentials,
   type SyncResult,
 } from '../../services/supabaseSync'
@@ -831,8 +833,15 @@ function CloudSyncSection() {
   const setIntervalMinutes = useSyncSettingsStore((s) => s.setIntervalMinutes)
   const resetToDefaultProject = useSyncSettingsStore((s) => s.resetToDefaultProject)
   const credentials = useSyncSettingsStore((s) => s.credentials)
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot_step1' | 'forgot_step2'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [changePasswordVal, setChangePasswordVal] = useState('')
+  const [changePasswordConfirm, setChangePasswordConfirm] = useState('')
   const [status, setStatus] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<SyncResult | null>(null)
@@ -942,15 +951,80 @@ function CloudSyncSection() {
     }
   }
 
-  const handleResetPassword = async () => {
+  // Step 1: Send recovery code (matching v2 SendPasswordResetEmailAsync)
+  const handleSendRecoveryCode = async () => {
     if (!creds || !email.trim()) {
-      setStatus('Please enter your email address above to receive a password reset link.')
+      setStatus('Please enter your email address.')
       return
     }
     setBusy(true)
+    setStatus(`Sending 6-digit recovery code to ${email.trim()}…`)
     try {
-      await resetPassword(creds, email.trim())
-      setStatus('Password reset email sent! Check your inbox to reset your password.')
+      await sendPasswordResetEmail(creds, email.trim())
+      setAuthMode('forgot_step2')
+      setStatus(`6-digit code sent! Check your inbox (or spam) at ${email.trim()}, then enter the code below with your new password.`)
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Step 2: Verify OTP and set new password (matching v2 ResetPasswordWithOtpAsync)
+  const handleResetPasswordWithOtp = async () => {
+    if (!creds || !email.trim()) {
+      setStatus('Please enter your email address.')
+      return
+    }
+    if (!otpCode.trim()) {
+      setStatus('Please enter the 6-digit recovery code from your email.')
+      return
+    }
+    if (newPassword.length < 6) {
+      setStatus('New password must be at least 6 characters long.')
+      return
+    }
+    if (newPassword !== confirmNewPassword) {
+      setStatus('New password and confirmation do not match.')
+      return
+    }
+    setBusy(true)
+    setStatus('Verifying recovery code and setting your new password…')
+    try {
+      const user = await resetPasswordWithOtp(creds, email.trim(), otpCode.trim(), newPassword)
+      setUserEmail(user?.email ?? email.trim())
+      setPassword('')
+      setOtpCode('')
+      setNewPassword('')
+      setConfirmNewPassword('')
+      setAuthMode('signin')
+      await runImmediateSync(creds, 'Password successfully reset! You are now logged in')
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Change password while logged in
+  const handleChangePassword = async () => {
+    if (!creds) return
+    if (changePasswordVal.length < 6) {
+      setStatus('New password must be at least 6 characters long.')
+      return
+    }
+    if (changePasswordVal !== changePasswordConfirm) {
+      setStatus('New password and confirmation do not match.')
+      return
+    }
+    setBusy(true)
+    setStatus('Updating your password…')
+    try {
+      await updatePassword(creds, changePasswordVal)
+      setShowChangePassword(false)
+      setChangePasswordVal('')
+      setChangePasswordConfirm('')
+      setStatus('Password successfully updated!')
     } catch (e) {
       setStatus(e instanceof Error ? e.message : String(e))
     } finally {
@@ -962,6 +1036,7 @@ function CloudSyncSection() {
     if (!creds) return
     await signOut(creds)
     setUserEmail(null)
+    setShowChangePassword(false)
     setStatus('Signed out. Your local highlights, notes, and bookmarks remain safely on this device.')
   }
 
@@ -1002,67 +1077,279 @@ function CloudSyncSection() {
 
       {!userEmail ? (
         <section className="rounded-lg border border-neutral-800 p-5 bg-neutral-900/40">
-          <h3 className="text-sm font-semibold text-neutral-100 mb-1">Sign In or Create a Cloud Account</h3>
-          <p className="text-xs text-neutral-400 mb-4">
-            Enter your email and password below to sync all your bookmarks, 8-color highlights, and realization notes between this computer and the cloud.
-          </p>
-          <div className="flex flex-col gap-2.5 max-w-md">
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email address"
-              type="email"
-              className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
-            />
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && email.trim() && password && !busy) {
-                  void handleSignIn()
-                }
-              }}
-              placeholder="Password (min. 6 characters)"
-              type="password"
-              className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
-            />
-            <div className="flex flex-wrap gap-2 pt-1">
-              <button
-                type="button"
-                disabled={!creds || !email.trim() || !password || busy}
-                onClick={() => void handleSignIn()}
-                className="px-4 py-2 rounded-md text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-40"
-              >
-                {busy ? 'Working…' : 'Sign In & Sync'}
-              </button>
-              <button
-                type="button"
-                disabled={!creds || !email.trim() || !password || busy}
-                onClick={() => void handleSignUp()}
-                className="px-4 py-2 rounded-md text-xs font-medium text-neutral-200 border border-neutral-700 hover:bg-neutral-800 disabled:opacity-40"
-              >
-                Create Account (Sign Up)
-              </button>
-              <button
-                type="button"
-                disabled={!creds || !email.trim() || busy}
-                onClick={() => void handleMagicLink()}
-                className="px-3 py-2 rounded-md text-xs text-neutral-400 border border-neutral-800 hover:bg-neutral-900 disabled:opacity-40"
-                title="Send a one-time login link to your email"
-              >
-                Send Magic Link
-              </button>
-              <button
-                type="button"
-                disabled={!creds || !email.trim() || busy}
-                onClick={() => void handleResetPassword()}
-                className="px-3 py-2 rounded-md text-xs text-amber-400/80 hover:text-amber-300 border border-neutral-800 hover:bg-neutral-900 disabled:opacity-40"
-                title="Send a password reset link to your email"
-              >
-                Forgot Password?
-              </button>
+          {authMode === 'forgot_step1' ? (
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <h3 className="text-sm font-semibold text-amber-300">Reset Password (Step 1 of 2)</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signin')
+                    setStatus(null)
+                  }}
+                  className="text-xs text-neutral-400 hover:text-neutral-200"
+                >
+                  ← Back to Sign In
+                </button>
+              </div>
+              <p className="text-xs text-neutral-400 mb-4">
+                Forgot your password? Enter your email address below and we will send a 6-digit recovery code to your inbox:
+              </p>
+              <div className="flex flex-col gap-2.5 max-w-md">
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && email.trim() && !busy) {
+                      void handleSendRecoveryCode()
+                    }
+                  }}
+                  placeholder="Email address"
+                  type="email"
+                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
+                />
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={!creds || !email.trim() || busy}
+                    onClick={() => void handleSendRecoveryCode()}
+                    className="px-4 py-2 rounded-md text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-40"
+                  >
+                    {busy ? 'Sending Code…' : 'Send 6-Digit Recovery Code'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('signin')
+                      setStatus(null)
+                    }}
+                    className="px-3 py-2 rounded-md text-xs text-neutral-400 border border-neutral-800 hover:bg-neutral-900"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : authMode === 'forgot_step2' ? (
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <h3 className="text-sm font-semibold text-amber-300">Set New Password (Step 2 of 2)</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signin')
+                    setStatus(null)
+                  }}
+                  className="text-xs text-neutral-400 hover:text-neutral-200"
+                >
+                  ← Back to Sign In
+                </button>
+              </div>
+              <p className="text-xs text-neutral-400 mb-4">
+                A 6-digit recovery code was sent to <strong className="text-neutral-200">{email}</strong>. Enter the code and your new password below:
+              </p>
+              <div className="flex flex-col gap-2.5 max-w-md">
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email address"
+                  type="email"
+                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
+                />
+                <input
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  placeholder="6-digit recovery code (e.g. 123456)"
+                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-amber-300 placeholder:text-neutral-600 font-mono tracking-wider focus:outline-none focus:border-amber-500/50"
+                />
+                <input
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password (min. 6 characters)"
+                  type="password"
+                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
+                />
+                <input
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && otpCode.trim() && newPassword && confirmNewPassword && !busy) {
+                      void handleResetPasswordWithOtp()
+                    }
+                  }}
+                  placeholder="Confirm new password"
+                  type="password"
+                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
+                />
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={!creds || !email.trim() || !otpCode.trim() || !newPassword || !confirmNewPassword || busy}
+                    onClick={() => void handleResetPasswordWithOtp()}
+                    className="px-4 py-2 rounded-md text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-40"
+                  >
+                    {busy ? 'Setting Password…' : 'Set New Password & Sign In'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void handleSendRecoveryCode()}
+                    className="px-3 py-2 rounded-md text-xs text-neutral-400 border border-neutral-800 hover:bg-neutral-900"
+                  >
+                    Resend Code
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('signin')
+                      setStatus(null)
+                    }}
+                    className="px-3 py-2 rounded-md text-xs text-neutral-400 border border-neutral-800 hover:bg-neutral-900"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : authMode === 'signup' ? (
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <h3 className="text-sm font-semibold text-neutral-100">Create a Cloud Account</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signin')
+                    setStatus(null)
+                  }}
+                  className="text-xs text-amber-400 hover:underline"
+                >
+                  Already have an account? Sign In
+                </button>
+              </div>
+              <p className="text-xs text-neutral-400 mb-4">
+                Choose an email and password to sync your bookmarks, highlights, and realization notes across devices:
+              </p>
+              <div className="flex flex-col gap-2.5 max-w-md">
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email address"
+                  type="email"
+                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
+                />
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && email.trim() && password && !busy) {
+                      void handleSignUp()
+                    }
+                  }}
+                  placeholder="Password (min. 6 characters)"
+                  type="password"
+                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
+                />
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={!creds || !email.trim() || !password || busy}
+                    onClick={() => void handleSignUp()}
+                    className="px-4 py-2 rounded-md text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-40"
+                  >
+                    {busy ? 'Creating Account…' : 'Create Account (Sign Up)'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('signin')
+                      setStatus(null)
+                    }}
+                    className="px-3 py-2 rounded-md text-xs text-neutral-400 border border-neutral-800 hover:bg-neutral-900"
+                  >
+                    Back to Sign In
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <h3 className="text-sm font-semibold text-neutral-100">Sign In to Your Cloud Account</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signup')
+                    setStatus(null)
+                  }}
+                  className="text-xs text-amber-400 hover:underline"
+                >
+                  New user? Create Account
+                </button>
+              </div>
+              <p className="text-xs text-neutral-400 mb-4">
+                Enter your email and password below to sync your bookmarks, 8-color highlights, and realization notes between this computer and the cloud.
+              </p>
+              <div className="flex flex-col gap-2.5 max-w-md">
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email address"
+                  type="email"
+                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
+                />
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && email.trim() && password && !busy) {
+                      void handleSignIn()
+                    }
+                  }}
+                  placeholder="Password"
+                  type="password"
+                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
+                />
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={!creds || !email.trim() || !password || busy}
+                    onClick={() => void handleSignIn()}
+                    className="px-4 py-2 rounded-md text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-40"
+                  >
+                    {busy ? 'Working…' : 'Sign In & Sync'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('forgot_step1')
+                      setStatus(null)
+                    }}
+                    className="px-3 py-2 rounded-md text-xs text-amber-400/90 hover:text-amber-300 hover:underline"
+                  >
+                    Forgot Password?
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('signup')
+                      setStatus(null)
+                    }}
+                    className="px-3 py-2 rounded-md text-xs text-neutral-300 border border-neutral-700 hover:bg-neutral-800"
+                  >
+                    Create Account
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!creds || !email.trim() || busy}
+                    onClick={() => void handleMagicLink()}
+                    className="px-3 py-2 rounded-md text-xs text-neutral-500 border border-neutral-800 hover:bg-neutral-900 disabled:opacity-40"
+                  >
+                    Magic Link
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       ) : (
         <section className="rounded-lg border border-neutral-800 p-5 bg-neutral-900/40">
@@ -1084,7 +1371,14 @@ function CloudSyncSection() {
           <p className="text-xs text-neutral-400 mb-3">
             Any highlight, note, or bookmark you create or edit is automatically synced between local storage and cloud.
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowChangePassword((v) => !v)}
+              className="px-3 py-1.5 rounded-md text-xs text-amber-400 border border-amber-500/30 hover:bg-amber-500/10"
+            >
+              Change Password
+            </button>
             <button
               type="button"
               onClick={handleExportDiagnostics}
@@ -1100,6 +1394,46 @@ function CloudSyncSection() {
               Sign Out
             </button>
           </div>
+
+          {showChangePassword && (
+            <div className="mt-4 p-4 rounded-md border border-neutral-800 bg-neutral-950/60 max-w-md">
+              <h4 className="text-xs font-semibold text-neutral-200 mb-2">Change Your Password</h4>
+              <div className="flex flex-col gap-2">
+                <input
+                  value={changePasswordVal}
+                  onChange={(e) => setChangePasswordVal(e.target.value)}
+                  placeholder="New password (min. 6 characters)"
+                  type="password"
+                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-amber-500/50"
+                />
+                <input
+                  value={changePasswordConfirm}
+                  onChange={(e) => setChangePasswordConfirm(e.target.value)}
+                  placeholder="Confirm new password"
+                  type="password"
+                  className="bg-neutral-900 border border-neutral-800 rounded-md px-3 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-amber-500/50"
+                />
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={busy || !changePasswordVal || !changePasswordConfirm}
+                    onClick={() => void handleChangePassword()}
+                    className="px-3 py-1.5 rounded-md text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-40"
+                  >
+                    Save New Password
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowChangePassword(false)}
+                    className="px-3 py-1.5 rounded-md text-xs text-neutral-400 border border-neutral-800 hover:bg-neutral-900"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {lastResult && (
             <p className="text-xs text-neutral-500 mt-3">
               Last push: {lastResult.pushedHighlights} highlights, {lastResult.pushedNotes} notes, {lastResult.pushedBookmarks}{' '}
