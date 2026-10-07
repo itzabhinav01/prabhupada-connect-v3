@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 import { normalizeIast, normalizeIastWithOffsets } from '../../utils/iast'
 import { findAllOccurrences } from './findMatchUtils'
@@ -25,13 +25,64 @@ function highlightApiAvailable(): boolean {
  * a `MutationObserver` re-scans whenever the mounted set changes (i.e. on
  * scroll), so the highlight set stays current as new verses mount.
  */
+export interface FindMatchMeta {
+  recordKey: string
+  occurrenceIndex: number
+}
+
+interface RangeOccurrence {
+  range: Range
+  recordKey: string | null
+  occurrenceIndex: number
+}
+
+function scrollRangeIntoView(range: Range, container: HTMLElement) {
+  const rangeRect = range.getBoundingClientRect()
+  if (rangeRect.height === 0 && rangeRect.width === 0) {
+    (range.startContainer.parentElement as HTMLElement)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    })
+    return
+  }
+
+  const containerRect = container.getBoundingClientRect()
+  const padding = 80
+  const isFullyVisible =
+    rangeRect.top >= containerRect.top + padding &&
+    rangeRect.bottom <= containerRect.bottom - padding
+
+  if (!isFullyVisible) {
+    const offsetFromContainerTop = rangeRect.top - containerRect.top
+    const targetScrollTop =
+      container.scrollTop + offsetFromContainerTop - container.clientHeight / 2 + rangeRect.height / 2
+
+    container.scrollTo({
+      top: Math.max(0, targetScrollTop),
+      behavior: 'smooth',
+    })
+  }
+}
+
+/**
+ * Highlights every on-screen occurrence of `query` inside `containerSelector`
+ * using `CSS.highlights` — Range objects referencing the *existing* text
+ * nodes React already rendered, not DOM mutation.
+ *
+ * Distinctly highlights the single active match (`inpage-find-active`),
+ * and automatically scrolls the active match into view (centered), matching
+ * standard browser Ctrl+F behavior.
+ */
 export function useHighlightFindMatches(
   containerSelector: string,
   query: string,
-  activeRecordKey: string | null,
+  currentIndex: number,
   matchCase = false,
   wholeWord = false,
+  currentMatch: FindMatchMeta | null = null,
 ) {
+  const lastScrollKeyRef = useRef<string>('')
+
   useEffect(() => {
     if (!highlightApiAvailable()) return
     const needle = matchCase ? query.trim() : normalizeIast(query.trim())
@@ -46,7 +97,8 @@ export function useHighlightFindMatches(
       }
 
       const allRanges: Range[] = []
-      const activeRanges: Range[] = []
+      const occurrences: RangeOccurrence[] = []
+      const verseOccurrences = new Map<string, number>()
 
       const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
         acceptNode: (node) => {
@@ -63,25 +115,24 @@ export function useHighlightFindMatches(
       let node: Node | null
       while ((node = walker.nextNode())) {
         const text = node.textContent ?? ''
-        const isActiveVerse = activeRecordKey != null && !!node.parentElement?.closest(`[data-verse-key="${activeRecordKey}"]`)
+        const verseEl = node.parentElement?.closest('[data-verse-key]')
+        const recordKey = verseEl?.getAttribute('data-verse-key') ?? null
 
         if (matchCase) {
-          // No normalization at all, so occurrence offsets are already
-          // real DOM offsets — no offset-map translation needed.
           for (const startOffset of findAllOccurrences(text, needle, wholeWord)) {
             const range = new Range()
             range.setStart(node, startOffset)
             range.setEnd(node, startOffset + needle.length)
             allRanges.push(range)
-            if (isActiveVerse) activeRanges.push(range)
+
+            const occKey = recordKey ?? '__global'
+            const occIdx = verseOccurrences.get(occKey) ?? 0
+            verseOccurrences.set(occKey, occIdx + 1)
+            occurrences.push({ range, recordKey, occurrenceIndex: occIdx })
           }
           continue
         }
 
-        // Expansions like ṛ→"ri" make the normalized text longer than the
-        // original, so a match's offsets in normalized text must go through
-        // `offsetMap` to land on the right position in the original `node`
-        // text — required to set a Range on text React actually rendered.
         const { text: normalizedText, offsetMap } = normalizeIastWithOffsets(text)
         for (const idx of findAllOccurrences(normalizedText, needle, wholeWord)) {
           const startOffset = offsetMap[idx]
@@ -91,13 +142,51 @@ export function useHighlightFindMatches(
             range.setStart(node, startOffset)
             range.setEnd(node, endOffset)
             allRanges.push(range)
-            if (isActiveVerse) activeRanges.push(range)
+
+            const occKey = recordKey ?? '__global'
+            const occIdx = verseOccurrences.get(occKey) ?? 0
+            verseOccurrences.set(occKey, occIdx + 1)
+            occurrences.push({ range, recordKey, occurrenceIndex: occIdx })
           }
         }
       }
 
+      if (allRanges.length === 0) {
+        CSS.highlights.delete(ALL_MATCHES_NAME)
+        CSS.highlights.delete(ACTIVE_MATCH_NAME)
+        return
+      }
+
+      // Identify active match range
+      let activeRange: Range | null = null
+      if (currentMatch) {
+        const found = occurrences.find(
+          (o) => o.recordKey === currentMatch.recordKey && o.occurrenceIndex === currentMatch.occurrenceIndex,
+        )
+        if (found) activeRange = found.range
+      }
+      if (!activeRange) {
+        const clampedIdx = Math.max(0, Math.min(currentIndex, allRanges.length - 1))
+        activeRange = allRanges[clampedIdx] ?? null
+      }
+
       CSS.highlights.set(ALL_MATCHES_NAME, new Highlight(...allRanges))
-      CSS.highlights.set(ACTIVE_MATCH_NAME, new Highlight(...activeRanges))
+      if (activeRange) {
+        CSS.highlights.set(ACTIVE_MATCH_NAME, new Highlight(activeRange))
+      } else {
+        CSS.highlights.delete(ACTIVE_MATCH_NAME)
+      }
+
+      // Smoothly scroll to the active match when query or match index changes
+      const scrollKey = `${query}:${currentIndex}:${currentMatch?.recordKey ?? ''}:${currentMatch?.occurrenceIndex ?? -1}`
+      if (activeRange && scrollKey !== lastScrollKeyRef.current) {
+        lastScrollKeyRef.current = scrollKey
+        requestAnimationFrame(() => {
+          if (container instanceof HTMLElement) {
+            scrollRangeIntoView(activeRange, container)
+          }
+        })
+      }
     }
 
     scan()
@@ -114,5 +203,5 @@ export function useHighlightFindMatches(
       CSS.highlights.delete(ALL_MATCHES_NAME)
       CSS.highlights.delete(ACTIVE_MATCH_NAME)
     }
-  }, [containerSelector, query, activeRecordKey, matchCase, wholeWord])
+  }, [containerSelector, query, currentIndex, matchCase, wholeWord, currentMatch])
 }

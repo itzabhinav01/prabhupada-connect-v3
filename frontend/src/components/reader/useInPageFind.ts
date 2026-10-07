@@ -6,6 +6,8 @@ import { normalizeIast } from '../../utils/iast'
 import type { VerseRecord } from '../../types/scripture'
 import { findAllOccurrences } from './findMatchUtils'
 
+import { parseSongPayload } from '../study/highlightable'
+
 export interface FindMatch {
   recordKey: string
   /** Which occurrence within that verse's combined text this is (0-based) —
@@ -19,24 +21,26 @@ export interface FindMatch {
  * diacritic-insensitive (see `normalizeIast`): typing "krishna" matches
  * "Kṛṣṇa". */
 function searchableText(record: VerseRecord): string {
+  const song = parseSongPayload(record.purports)
+  if (song) {
+    const parts: string[] = []
+    if (song.intro) parts.push(song.intro)
+    if (song.stanzas) {
+      for (const st of song.stanzas) {
+        if (st.lines) parts.push(...st.lines)
+        if (st.synonyms) parts.push(st.synonyms)
+        if (st.translation) parts.push(st.translation)
+      }
+    }
+    if (song.notes) parts.push(song.notes)
+    if (song.purport) parts.push(song.purport)
+    return parts.join(' \u0000 ')
+  }
   return [record.translation, record.synonyms, record.purports, record.devanagari, record.transliteration]
     .filter(Boolean)
     .join(' \u0000 ')
 }
 
-
-/**
- * In-page find within the currently open chapter. The reader virtualizes
- * long chapters (`ContinuousReader` only mounts ~8 verses' worth of DOM at
- * a time), so matches are computed over the chapter's actual verse data —
- * not a DOM scan — and navigating a match reuses the existing
- * `jumpToVerse` scroll-restoration path so the target verse mounts before
- * `InPageFindBar` tries to highlight it.
- *
- * `isOpen`/`query`/`currentIndex` live in `useInPageFindStore` (not local
- * state) so the global `Ctrl+F`/`Escape` shortcuts in `AppLayout.tsx` can
- * open and close the bar without needing this hook's `records`.
- */
 export function useInPageFind(records: VerseRecord[]) {
   const isOpen = useInPageFindStore((s) => s.isOpen)
   const query = useInPageFindStore((s) => s.query)
@@ -49,7 +53,8 @@ export function useInPageFind(records: VerseRecord[]) {
   const setCurrentIndex = useInPageFindStore((s) => s.setCurrentIndex)
   const toggleMatchCase = useInPageFindStore((s) => s.toggleMatchCase)
   const toggleWholeWord = useInPageFindStore((s) => s.toggleWholeWord)
-  const jumpToVerse = useNavigationStore((s) => s.jumpToVerse)
+  const setActiveVerse = useNavigationStore((s) => s.setActiveVerse)
+  const activeVerseId = useNavigationStore((s) => s.activeVerseId)
 
   const matches = useMemo<FindMatch[]>(() => {
     // Match Case bypasses IAST folding entirely (see `useInPageFindStore`) —
@@ -74,9 +79,11 @@ export function useInPageFind(records: VerseRecord[]) {
       setCurrentIndex(clamped)
       return
     }
-    jumpToVerse(matches[clamped].recordKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matches, currentIndex])
+    const targetVerseKey = matches[clamped].recordKey
+    if (targetVerseKey !== activeVerseId) {
+      setActiveVerse(targetVerseKey)
+    }
+  }, [matches, currentIndex, activeVerseId, setActiveVerse, setCurrentIndex])
 
   const next = useCallback(() => {
     if (matches.length === 0) return

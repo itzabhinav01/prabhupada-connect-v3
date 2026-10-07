@@ -8,6 +8,7 @@ export function InPageFindBar({ find }: { find: ReturnType<typeof useInPageFind>
 
   useEffect(() => {
     inputRef.current?.focus()
+    inputRef.current?.select()
   }, [])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

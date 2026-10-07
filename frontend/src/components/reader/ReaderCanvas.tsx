@@ -92,9 +92,10 @@ export function ReaderCanvas() {
   useHighlightFindMatches(
     '[data-reader-canvas]',
     find.isOpen ? find.query : '',
-    find.currentMatch?.recordKey ?? null,
+    find.currentIndex,
     find.matchCase,
     find.wholeWord,
+    find.currentMatch,
   )
 
   // Global shortcuts (theme, zen, tabs, Ctrl+F dispatch, Escape) live in
