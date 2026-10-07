@@ -252,6 +252,7 @@ const SPACING_OPTIONS: { value: LineSpacing; label: string }[] = [
 
 function ReadingPreferencesSection() {
   const fontSize = useReaderStore((s) => s.fontSize)
+  const setFontSize = useReaderStore((s) => s.setFontSize)
   const increaseFontSize = useReaderStore((s) => s.increaseFontSize)
   const decreaseFontSize = useReaderStore((s) => s.decreaseFontSize)
   const readingWidth = useReaderStore((s) => s.readingWidth)
@@ -268,11 +269,7 @@ function ReadingPreferencesSection() {
             <button
               key={p.label}
               type="button"
-              onClick={() => {
-                const diff = p.value - fontSize
-                const steps = Math.round(diff / 2)
-                for (let i = 0; i < Math.abs(steps); i++) (steps > 0 ? increaseFontSize : decreaseFontSize)()
-              }}
+              onClick={() => setFontSize(p.value)}
               className={`px-3 py-1.5 rounded-md text-xs border transition-colors ${
                 fontSize === p.value
                   ? 'border-amber-500/50 bg-amber-500/10 text-amber-300'

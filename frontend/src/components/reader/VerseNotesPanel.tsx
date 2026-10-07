@@ -40,7 +40,15 @@ import { deriveNavigationTarget } from '../../utils/recordKey'
 import { NoteContentRenderer } from '../study/NoteContentRenderer'
 import type { Note } from '../../types/study'
 
-export function VerseNotesPanel({ verseId, reference }: { verseId: string; reference?: string | null }) {
+export function VerseNotesPanel({
+  verseId,
+  reference,
+  onHeightChange,
+}: {
+  verseId: string
+  reference?: string | null
+  onHeightChange?: () => void
+}) {
   const notes = useStudyStore((s) => s.notesByVerse[verseId]) ?? []
   const loadNotesForVerse = useStudyStore((s) => s.loadNotesForVerse)
   const createNote = useStudyStore((s) => s.createNote)
@@ -108,6 +116,10 @@ export function VerseNotesPanel({ verseId, reference }: { verseId: string; refer
       isMounted = false
     }
   }, [verseId, reference, showBacklinks, loadNotesForVerse])
+
+  useEffect(() => {
+    onHeightChange?.()
+  }, [backlinks.length, backlinksOpen, editing, notes.length, onHeightChange])
 
   const openSourceVerse = (sourceVerseId: string) => {
     const target = deriveNavigationTarget(sourceVerseId)

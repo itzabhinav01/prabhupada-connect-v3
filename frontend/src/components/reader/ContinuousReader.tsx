@@ -25,15 +25,16 @@ export function ContinuousReader({ records }: { records: VerseRecord[] }) {
   const estimateSize = (index: number) => {
     const r = records[index]
     if (!r) return 260
+    const scale = fontSize / 20
     let est = 45
-    if (showSanskrit && r.devanagari) est += 65
-    if (showTransliteration && r.transliteration) est += 55
+    if (showSanskrit && r.devanagari) est += Math.round(75 * scale)
+    if (showTransliteration && r.transliteration) est += Math.round(65 * scale)
     if (showPronunciationGuide && r.transliteration) est += 40
-    if (showSynonyms && r.synonyms) est += Math.min(Math.round(r.synonyms.length * 0.22), 200)
-    if (r.translation) est += Math.min(Math.round(r.translation.length * 0.32), 220)
-    if (showPurport && r.purports) est += Math.min(Math.round(r.purports.length * 0.35), 3500)
+    if (showSynonyms && r.synonyms) est += Math.round(Math.min(r.synonyms.length * 0.26, 260) * scale)
+    if (r.translation) est += Math.round(Math.min(r.translation.length * 0.38, 280) * scale)
+    if (showPurport && r.purports) est += Math.round(Math.min(r.purports.length * 0.42, 4500) * scale)
     est += 45 // compact personal notes header
-    if (showBacklinks) est += 35
+    if (showBacklinks) est += 55
     return Math.max(est, 140)
   }
 
@@ -42,7 +43,7 @@ export function ContinuousReader({ records }: { records: VerseRecord[] }) {
     getScrollElement: () => parentRef.current,
     getItemKey: (index) => records[index]?.recordKey ?? index,
     estimateSize,
-    overscan: 4,
+    overscan: 6,
   })
 
   // When split view opens/closes or window width changes, line wrapping changes.
@@ -154,9 +155,16 @@ export function ContinuousReader({ records }: { records: VerseRecord[] }) {
                 left: 0,
                 width: '100%',
                 transform: `translateY(${virtualItem.start}px)`,
+                willChange: 'transform',
+                contain: 'layout style',
               }}
             >
-              <VerseView record={record} />
+              <VerseView
+                record={record}
+                onHeightChange={() => {
+                  virtualizer.measure()
+                }}
+              />
             </div>
           )
         })}

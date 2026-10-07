@@ -17,8 +17,13 @@ import { useUIStore } from '../../stores/useUIStore'
 import type { VerseRecord } from '../../types/scripture'
 import type { Highlight } from '../../types/study'
 
-export function VerseView({ record }: { record: VerseRecord }) {
-  const fontSize = useReaderStore((s) => s.fontSize)
+export function VerseView({
+  record,
+  onHeightChange,
+}: {
+  record: VerseRecord
+  onHeightChange?: () => void
+}) {
   const showSanskrit = useReaderStore((s) => s.showSanskrit)
   const showSynonyms = useReaderStore((s) => s.showSynonyms)
   const showPurport = useReaderStore((s) => s.showPurport)
@@ -147,7 +152,7 @@ export function VerseView({ record }: { record: VerseRecord }) {
       {!song && showSanskrit && record.devanagari && (
         <p
           className="whitespace-pre-line break-words mb-3 leading-[1.9] text-center"
-          style={{ color: 'var(--text-primary)', fontSize: `${fontSize}px` }}
+          style={{ color: 'var(--text-primary)', fontSize: 'var(--font-size-sanskrit)' }}
           lang="sa"
         >
           {record.devanagari.trim()}
@@ -158,7 +163,7 @@ export function VerseView({ record }: { record: VerseRecord }) {
         <>
           <p
             className="whitespace-pre-line break-words mb-1 italic leading-[1.9] text-center"
-            style={{ color: 'var(--text-primary)', fontSize: `${fontSize}px` }}
+            style={{ color: 'var(--text-primary)', fontSize: 'var(--font-size-translit)' }}
           >
             {formatQuotedVerse(record.transliteration.trim())}
           </p>
@@ -189,7 +194,8 @@ export function VerseView({ record }: { record: VerseRecord }) {
                 <div
                   key={s.key}
                   data-field="song-intro"
-                  className="text-[15px] leading-relaxed text-neutral-300 italic bg-neutral-900/40 border border-neutral-800/70 rounded-lg px-4 py-3 whitespace-pre-line"
+                  className="leading-relaxed text-neutral-300 italic bg-neutral-900/40 border border-neutral-800/70 rounded-lg px-4 py-3 whitespace-pre-line"
+                  style={{ fontSize: 'var(--font-size-purport)' }}
                 >
                   {renderSegmentWithHighlights(s, highlights, handleHighlightClick)}
                 </div>
@@ -229,7 +235,7 @@ export function VerseView({ record }: { record: VerseRecord }) {
                     <div
                       data-field={`stanza-${idx}-lines`}
                       className="whitespace-pre-line break-words mb-4 italic leading-[1.9] text-center"
-                      style={{ color: 'var(--text-primary)', fontSize: `${fontSize}px` }}
+                      style={{ color: 'var(--text-primary)', fontSize: 'var(--font-size-translit)' }}
                     >
                       {renderSegmentWithHighlights(linesSeg, highlights, handleHighlightClick)}
                     </div>
@@ -240,7 +246,10 @@ export function VerseView({ record }: { record: VerseRecord }) {
                     return (
                       <div data-field={`stanza-${idx}-synonyms`} className="mb-4">
                         <div className="scripture-section-header">Word-for-Word</div>
-                        <p className="text-[14.5px] leading-relaxed text-neutral-400 break-words">
+                        <p
+                          className="leading-relaxed text-neutral-400 break-words"
+                          style={{ fontSize: 'var(--font-size-synonyms)' }}
+                        >
                           {flat
                             ? renderSynonymsSegment(synSeg, flat, highlights, handleHighlightClick, setConcordanceLemma)
                             : renderSegmentWithHighlights(synSeg, highlights, handleHighlightClick)}
@@ -252,8 +261,8 @@ export function VerseView({ record }: { record: VerseRecord }) {
                   {transSeg && (
                     <div data-field={`stanza-${idx}-translation`}>
                       <blockquote
-                        className="border-l-2 border-amber-500/70 pl-4 py-1 text-[16.5px] leading-relaxed font-medium break-words whitespace-pre-line"
-                        style={{ color: 'var(--text-primary)' }}
+                        className="border-l-2 border-amber-500/70 pl-4 py-1 leading-relaxed font-medium break-words whitespace-pre-line"
+                        style={{ color: 'var(--text-primary)', fontSize: 'var(--font-size-translation)' }}
                       >
                         {renderSegmentWithHighlights(transSeg, highlights, handleHighlightClick)}
                       </blockquote>
@@ -269,7 +278,8 @@ export function VerseView({ record }: { record: VerseRecord }) {
                 <div
                   key={s.key}
                   data-field="song-notes"
-                  className="pt-3 border-t border-neutral-800/60 text-xs text-neutral-400 italic whitespace-pre-line"
+                  className="pt-3 border-t border-neutral-800/60 text-neutral-400 italic whitespace-pre-line"
+                  style={{ fontSize: 'var(--font-size-synonyms)' }}
                 >
                   {renderSegmentWithHighlights(s, highlights, handleHighlightClick)}
                 </div>
@@ -285,7 +295,10 @@ export function VerseView({ record }: { record: VerseRecord }) {
                   return (
                     <div key={s.key} data-field="synonyms">
                       <div className="scripture-section-header">Synonyms</div>
-                      <p className="mb-5 text-[15px] leading-relaxed text-neutral-400 break-words">
+                      <p
+                        className="mb-5 leading-relaxed text-neutral-400 break-words"
+                        style={{ fontSize: 'var(--font-size-synonyms)' }}
+                      >
                         {flat
                           ? renderSynonymsSegment(s, flat, highlights, handleHighlightClick, setConcordanceLemma)
                           : renderSegmentWithHighlights(s, highlights, handleHighlightClick)}
@@ -300,8 +313,8 @@ export function VerseView({ record }: { record: VerseRecord }) {
                 <div key={s.key} data-field="translation">
                   <div className="scripture-section-header">Translation</div>
                   <blockquote
-                    className="mb-5 border-l-2 border-amber-500/70 pl-4 py-1 text-[17px] leading-relaxed font-medium break-words"
-                    style={{ color: 'var(--text-primary)' }}
+                    className="mb-5 border-l-2 border-amber-500/70 pl-4 py-1 leading-relaxed font-medium break-words"
+                    style={{ color: 'var(--text-primary)', fontSize: 'var(--font-size-translation)' }}
                   >
                     {renderSegmentWithHighlights(s, highlights, handleHighlightClick)}
                   </blockquote>
@@ -316,7 +329,10 @@ export function VerseView({ record }: { record: VerseRecord }) {
                     record.synonyms ||
                     segments.some((s) => s.key === 'translation'),
                 ) && <div className="scripture-section-header">Purport</div>}
-                <div className="text-neutral-300 text-[15px] leading-[var(--reading-line-height)] space-y-4 break-words">
+                <div
+                  className="text-neutral-300 leading-[var(--reading-line-height)] space-y-4 break-words"
+                  style={{ fontSize: 'var(--font-size-purport)' }}
+                >
                   {segments
                     .filter((s) => s.key.startsWith('purport-'))
                     .map((s) => {
@@ -357,7 +373,7 @@ export function VerseView({ record }: { record: VerseRecord }) {
         )}
       </div>
 
-      <VerseNotesPanel verseId={record.recordKey} reference={record.reference} />
+      <VerseNotesPanel verseId={record.recordKey} reference={record.reference} onHeightChange={onHeightChange} />
 
       <SelectionToolbar
         containerRef={highlightRootRef}

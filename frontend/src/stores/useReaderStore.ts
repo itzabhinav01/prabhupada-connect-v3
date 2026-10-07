@@ -27,6 +27,16 @@ function applyLineSpacingToDom(spacing: LineSpacing) {
   document.documentElement.style.setProperty('--reading-line-height', String(LINE_SPACING_VALUES[spacing]))
 }
 
+export function applyFontSizeToDom(fontSize: number) {
+  const root = document.documentElement
+  root.style.setProperty('--reading-font-size', `${fontSize}px`)
+  root.style.setProperty('--font-size-sanskrit', `${fontSize}px`)
+  root.style.setProperty('--font-size-translit', `${fontSize}px`)
+  root.style.setProperty('--font-size-synonyms', `${Math.max(12, Math.round(fontSize * 0.8))}px`)
+  root.style.setProperty('--font-size-translation', `${Math.max(13, Math.round(fontSize * 0.9))}px`)
+  root.style.setProperty('--font-size-purport', `${Math.max(12, Math.round(fontSize * 0.85))}px`)
+}
+
 const debouncedSave = debounce((key: string, value: unknown) => void saveSetting(key, JSON.stringify(value)), 400)
 
 interface ReaderState {
@@ -44,6 +54,7 @@ interface ReaderState {
   increaseFontSize: () => void
   decreaseFontSize: () => void
   resetFontSize: () => void
+  setFontSize: (size: number) => void
   setReadingWidth: (width: ReadingWidth) => void
   setLineSpacing: (spacing: LineSpacing) => void
   toggleSanskrit: () => void
@@ -70,17 +81,26 @@ export const useReaderStore = create<ReaderState>((set, get) => ({
 
   increaseFontSize: () => {
     const fontSize = Math.min(MAX_FONT_SIZE, get().fontSize + FONT_STEP)
+    applyFontSizeToDom(fontSize)
     set({ fontSize })
     debouncedSave('fontSize', fontSize)
   },
   decreaseFontSize: () => {
     const fontSize = Math.max(MIN_FONT_SIZE, get().fontSize - FONT_STEP)
+    applyFontSizeToDom(fontSize)
     set({ fontSize })
     debouncedSave('fontSize', fontSize)
   },
   resetFontSize: () => {
+    applyFontSizeToDom(DEFAULT_FONT_SIZE)
     set({ fontSize: DEFAULT_FONT_SIZE })
     debouncedSave('fontSize', DEFAULT_FONT_SIZE)
+  },
+  setFontSize: (size: number) => {
+    const clamped = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)))
+    applyFontSizeToDom(clamped)
+    set({ fontSize: clamped })
+    debouncedSave('fontSize', clamped)
   },
   setReadingWidth: (readingWidth) => {
     set({ readingWidth })
@@ -142,5 +162,6 @@ export const useReaderStore = create<ReaderState>((set, get) => ({
  * a redundant save. */
 export function hydrateReaderSettings(fontSize: number, readingWidth: ReadingWidth, lineSpacing: LineSpacing) {
   applyLineSpacingToDom(lineSpacing)
+  applyFontSizeToDom(fontSize)
   useReaderStore.setState({ fontSize, readingWidth, lineSpacing })
 }

@@ -37,6 +37,12 @@
   color-scheme: dark;
   --text-brightness: 100%;
   --effective-brightness: var(--text-brightness);
+  --reading-font-size: 20px;
+  --font-size-sanskrit: 20px;
+  --font-size-translit: 20px;
+  --font-size-synonyms: 16px;
+  --font-size-translation: 18px;
+  --font-size-purport: 17px;
 }
 
 /* Dark (default) — deep obsidian/slate, warm gold accent. */
