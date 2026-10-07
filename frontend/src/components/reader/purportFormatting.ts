@@ -65,13 +65,16 @@ function splitWordsBySyllables(words: string[], numLines: number): string[] {
 }
 
 /** Heals OCR/Folio word wraps inside a quoted Sanskrit verse and formats it
- * into 4 balanced śloka lines (pādas) when stored as 1 or 2 flat lines. */
+ * into 4 balanced śloka lines (pādas) matching traditional śloka meter. */
 export function formatQuotedVerse(raw: string): string {
   const healed = raw
     // Heal hyphenated line wraps like "bhakty-\nupahṛtam" -> "bhakty-upahṛtam"
     .replace(/-\s*\r?\n\s*/g, '-')
     // Heal stray single-char diacritic wraps like "yogina\nḥ" -> "yoginaḥ"
     .replace(/\r?\n\s*([ḥṁṃm])(?=\s|$)/gi, '$1')
+    // Heal OCR trailing asterisks / footnote markers
+    .replace(/\s*[*]+\s*$/g, '')
+    .replace(/\s+[*]+(?=\s|$)/g, '')
     // Heal known split Sanskrit compounds in JSD/SSR/QFE
     .replace(/\bprayatātm\s+anaḥ\b/gi, 'prayatātmanaḥ')
     .replace(/\bmānā\s+pamānayoḥ\b/gi, 'mānāpamānayoḥ')
@@ -84,9 +87,18 @@ export function formatQuotedVerse(raw: string): string {
     .map((l) => l.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
 
-  // Already 3 or 4+ verse lines
-  if (rawLines.length >= 3) {
-    return rawLines.join('\n')
+  if (rawLines.length === 0) return ''
+
+  const words = healed.split(/\s+/).filter(Boolean)
+  const totalSyllables = words.reduce((acc, w) => acc + countSyllablesInWord(w), 0)
+
+  // Check if existing lines are ragged (e.g. one line with only 1-2 words while total words >= 6)
+  const lineWordCounts = rawLines.map((l) => l.split(/\s+/).length)
+  const hasRaggedLine = lineWordCounts.some((cnt) => cnt <= 2) && words.length >= 6
+
+  // 4 balanced lines when uneven or 1-2 lines with >= 20 syllables
+  if ((rawLines.length < 3 || hasRaggedLine) && words.length >= 6 && totalSyllables >= 20) {
+    return splitWordsBySyllables(words, 4).join('\n')
   }
 
   // 2 half-verses (each containing 2 pādas): split each half-verse into 2 lines -> 4 lines
@@ -101,18 +113,19 @@ export function formatQuotedVerse(raw: string): string {
     return rawLines.join('\n')
   }
 
-  // Single flat line: split into 4 pādas (or 2 lines for a short half-śloka)
-  const single = rawLines[0] ?? ''
-  const words = single.split(/\s+/).filter(Boolean)
-  const totalSyllables = words.reduce((acc, w) => acc + countSyllablesInWord(w), 0)
+  // Already 3 or 4+ verse lines without ragged imbalance
+  if (rawLines.length >= 3 && !hasRaggedLine) {
+    return rawLines.join('\n')
+  }
 
+  // Single flat line: split into 4 pādas (or 2 lines for a short half-śloka)
   if (words.length >= 6 && totalSyllables >= 24) {
     return splitWordsBySyllables(words, 4).join('\n')
   }
   if (words.length >= 4 && totalSyllables >= 12) {
     return splitWordsBySyllables(words, 2).join('\n')
   }
-  return single
+  return rawLines.join('\n')
 }
 
 // Explicit code headings like "JSD 5.3: Making Friends with the Mind", "RTW 2.1: ...", "2.1 Everyone Can See God"
@@ -147,8 +160,16 @@ const MINOR_TITLE_WORDS = new Set([
   'are',
 ])
 
-/** A dialogue turn: "Speaker Name: spoken text...". */
-const DIALOGUE_RE = /^([A-ZŚĀĪŪṚḶṄÑṆṬḌṢ][\p{L}.'’-]*(?:\s+[A-ZŚĀĪŪṚḶṄÑṆṬḌṢ][\p{L}.'’-]*){0,3}):\s+(.+)$/su
+export const SCRIPTURE_MARKERS = new Set(['SYNONYMS', 'TRANSLATION', 'PURPORT', 'SŪTRA', 'SUTRA', 'TEXT'])
+
+/** A dialogue turn with colon: "Speaker Name: spoken text...". */
+const DIALOGUE_COLON_RE =
+  /^([A-ZŚĀĪŪṚḶṄÑṆṬḌṢ][\p{L}.'’\-]*(?:\s+(?:\([0-9]+\)|[A-ZŚĀĪŪṚḶṄÑṆṬḌṢ][\p{L}.'’\-]*)){0,4}):\s+(.+)$/su
+
+/** A dialogue turn with period (common in Life Comes From Life, Conversations, Morning Walks):
+ * "Śrīla Prabhupāda. [holding a rose in his hand]. Can any scientist...", "Dr. Singh. That is not possible." */
+const DIALOGUE_PERIOD_RE =
+  /^(Śrīla Prabhupāda|Dr\.\s+[A-ZŚĀĪŪṚḶ][\p{L}.'’\-]+|[A-ZŚĀĪŪṚḶ][\p{L}.'’\-]+(?:\s+[A-ZŚĀĪŪṚḶ][\p{L}.'’\-]+){0,2})\.\s+(?:\[.*?\]\.\s+)?(.+)$/su
 
 export interface DialogueMatch {
   speakerEnd: number
@@ -156,11 +177,21 @@ export interface DialogueMatch {
 
 function matchDialogue(text: string): DialogueMatch | null {
   if (CODE_HEADING_RE.test(text)) return null
-  const m = DIALOGUE_RE.exec(text)
-  if (!m) return null
-  const speaker = m[1]
-  if (speaker.length > 40 || /\d/.test(speaker)) return null
-  return { speakerEnd: speaker.length + 1 }
+  const mColon = DIALOGUE_COLON_RE.exec(text)
+  if (mColon) {
+    const speaker = mColon[1]
+    if (speaker.length <= 40 && !/\d{2,}/.test(speaker)) {
+      return { speakerEnd: speaker.length + 1 } // includes ':'
+    }
+  }
+  const mPeriod = DIALOGUE_PERIOD_RE.exec(text)
+  if (mPeriod) {
+    const speaker = mPeriod[1]
+    if (speaker.length <= 40 && !/\d/.test(speaker)) {
+      return { speakerEnd: speaker.length + 1 } // includes '.'
+    }
+  }
+  return null
 }
 
 /** Detects chapter/section subheadings embedded in prose across all books:
@@ -170,6 +201,9 @@ function matchDialogue(text: string): DialogueMatch | null {
 export function isSubheading(text: string): boolean {
   const trimmed = text.trim()
   if (trimmed.length === 0 || trimmed.length > 85 || trimmed.includes('\n')) return false
+
+  // Never classify scripture markers as prose subheadings
+  if (SCRIPTURE_MARKERS.has(trimmed.toUpperCase())) return false
 
   // 1. Explicit section code heading like "JSD 5.3: Making Friends with the Mind" or "2.1 Everyone Can See God"
   if (CODE_HEADING_RE.test(trimmed)) return true
@@ -185,7 +219,7 @@ export function isSubheading(text: string): boolean {
   if (letters.length < 3) return false
   const upper = trimmed.match(/\p{Lu}/gu) ?? []
 
-  // 2. All-caps subheading
+  // 2. All-caps subheading (excluding scripture markers)
   if (upper.length / letters.length > 0.7) return true
 
   // 3. Title-Case standalone heading (2 to 10 words, starts with capital letter, >= 75% of major words capitalized)
@@ -202,10 +236,16 @@ export function isSubheading(text: string): boolean {
 export type ParagraphKind =
   | { kind: 'verse' }
   | { kind: 'dialogue'; speakerEnd: number }
+  | { kind: 'scripture-marker'; label: string }
   | { kind: 'subheading' }
   | { kind: 'prose' }
 
 export function classifyPurportParagraph(text: string): ParagraphKind {
+  const trimmed = text.trim()
+  const upper = trimmed.toUpperCase()
+  if (SCRIPTURE_MARKERS.has(upper)) {
+    return { kind: 'scripture-marker', label: trimmed }
+  }
   if (isSubheading(text)) return { kind: 'subheading' }
   const dialogue = matchDialogue(text)
   if (dialogue) return { kind: 'dialogue', speakerEnd: dialogue.speakerEnd }

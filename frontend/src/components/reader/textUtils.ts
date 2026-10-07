@@ -4,10 +4,12 @@ export function normalizeProseWhitespace(text: string): string {
   return text.replace(/[ \t]*\r?\n[ \t]*/g, ' ').replace(/\s{2,}/g, ' ').trim()
 }
 
-/** Strips leading section codes like `"JSD 5.3: "` or `"5. "` for duplicate-heading comparison. */
+/** Strips leading section codes like `"SSR 3a: "`, `"TQE 2a: "`, `"JSD 5.3: "` or `"5. "` for duplicate-heading comparison. */
 function bareHeadingTitle(text: string): string {
   return text
-    .replace(/^(?:[A-ZĀĪŪŚṢṚḶ]{2,10}\s+)?\d+(?:\.\d+)*\s*[.:]\s*/iu, '')
+    .replace(/^(?:[A-Za-zĀĪŪŚṢṚḶāīūśṣṛḷ]{2,10}\s+)?\d+[a-z]?(?:\.\d+[a-z]?)*\s*[.:]\s*/iu, '')
+    .trim()
+    .replace(/^["'“”]+|["'“”]+$/g, '')
     .trim()
     .toLowerCase()
 }
@@ -40,29 +42,45 @@ export function splitPurportParagraphs(text: string, recordTitle?: string | null
     }
   }
 
-  // Deduplicate consecutive repeated headings (e.g. "JSD 5.3: Making Friends with the Mind"
-  // followed immediately by "Making Friends with the Mind", or repeated chapter title at index 0)
-  const cleanTitle = recordTitle?.trim().toLowerCase()
+  // Deduplicate consecutive repeated headings (e.g. "SSR 3a: The Immortal Nectar..."
+  // followed immediately by "The Immortal Nectar...", "Eternal Perfection" repeated twice,
+  // or "NBS 51" followed by "SŪTRA 51" followed by "SŪTRA")
+  const cleanTitle = recordTitle ? bareHeadingTitle(recordTitle) : null
   const deduped: string[] = []
 
   for (let i = 0; i < formatted.length; i++) {
     const cur = formatted[i]
+    const bareCur = bareHeadingTitle(cur)
+
     if (i === 0 && cleanTitle && cur.length <= 90 && !cur.includes('\n')) {
-      const bareCur = bareHeadingTitle(cur)
       if (bareCur === cleanTitle || cur.toLowerCase() === cleanTitle) {
         continue
       }
     }
+
     if (deduped.length > 0) {
       const prev = deduped[deduped.length - 1]
-      if (
-        prev.length <= 90 &&
-        cur.length <= 90 &&
-        !prev.includes('\n') &&
-        !cur.includes('\n') &&
-        (prev.toLowerCase() === cur.toLowerCase() || bareHeadingTitle(prev) === cur.toLowerCase())
-      ) {
-        continue
+      const barePrev = bareHeadingTitle(prev)
+
+      if (prev.length <= 90 && cur.length <= 90 && !prev.includes('\n') && !cur.includes('\n')) {
+        // 1. Exact duplicate or bare title match
+        if (
+          prev.toLowerCase() === cur.toLowerCase() ||
+          (barePrev.length > 3 && barePrev === cur.toLowerCase()) ||
+          (bareCur.length > 3 && bareCur === prev.toLowerCase()) ||
+          (barePrev.length > 3 && bareCur.length > 3 && barePrev === bareCur)
+        ) {
+          continue
+        }
+
+        // 2. NBS: "NBS 51" followed by "SŪTRA 51" or "SŪTRA 51" followed by "SŪTRA"
+        if (/^NBS\s*\d+$/i.test(prev) && /^SŪTRA\s*\d+$/i.test(cur)) {
+          deduped[deduped.length - 1] = cur // keep "SŪTRA 51"
+          continue
+        }
+        if (/^SŪTRA\s*\d+$/i.test(prev) && /^SŪTRA$/i.test(cur)) {
+          continue
+        }
       }
     }
     deduped.push(cur)

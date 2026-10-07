@@ -31,6 +31,11 @@ const BOOK_NAMES = [
   'The\\s+Nectar\\s+of\\s+Devotion,?',
   'Nectar\\s+of\\s+Devotion,?',
   'NOD\\.?,?',
+  'Brs\\.?,?',
+  'Bhakti-ras[aā]m[rṛ]ta-sindhu,?',
+  'NBS\\.?,?',
+  'Nārada-bhakti-sūtra,?',
+  'Narada-bhakti-sutra,?',
   'Teachings\\s+of\\s+Lord\\s+Caitanya,?',
   'TLC\\.?,?',
   'Brahma-sa[mṁ]hit[aā],?',
@@ -140,9 +145,25 @@ function resolveOne(
     return { raw, bookKey: 'NOI', chapterKey, recordKey, label: raw }
   }
 
-  if (bt.startsWith('nod') || bt.includes('nectar of devotion')) {
-    const { chapterKey, recordKey } = buildKey('NOD', n1)
+  if (bt.startsWith('nod') || bt.includes('nectar of devotion') || bt.startsWith('brs') || bt.includes('bhakti-rasamrta') || bt.includes('bhakti-rasāmṛta')) {
+    const chapterNum = n2 ? n2 : n1
+    const { chapterKey, recordKey } = buildKey('NOD', chapterNum)
     return { raw, bookKey: 'NOD', chapterKey, recordKey, label: raw }
+  }
+
+  if (bt.startsWith('nbs') || bt.includes('narada-bhakti') || bt.includes('nārada-bhakti')) {
+    const sutraNum = parseInt(n1, 10)
+    let ch = '1'
+    if (!isNaN(sutraNum)) {
+      if (sutraNum <= 14) ch = '1'
+      else if (sutraNum <= 24) ch = '2'
+      else if (sutraNum <= 50) ch = '3'
+      else if (sutraNum <= 73) ch = '4'
+      else ch = '5'
+    }
+    const chapterKey = `NBS::${ch}`
+    const recordKey = `NBS-${ch}`
+    return { raw, bookKey: 'NBS', chapterKey, recordKey, label: raw }
   }
 
   if (bt.startsWith('tlc') || bt.includes('teachings of lord caitanya')) {

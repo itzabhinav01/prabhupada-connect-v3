@@ -26,6 +26,7 @@ export function VerseView({
 }) {
   const showSanskrit = useReaderStore((s) => s.showSanskrit)
   const showSynonyms = useReaderStore((s) => s.showSynonyms)
+  const showTranslation = useReaderStore((s) => s.showTranslation)
   const showPurport = useReaderStore((s) => s.showPurport)
   const showTransliteration = useReaderStore((s) => s.showTransliteration)
   const showPronunciationGuide = useReaderStore((s) => s.showPronunciationGuide)
@@ -258,7 +259,7 @@ export function VerseView({
                     )
                   })()}
 
-                  {transSeg && (
+                  {showTranslation && transSeg && (
                     <div data-field={`stanza-${idx}-translation`}>
                       <blockquote
                         className="border-l-2 border-amber-500/70 pl-4 py-1 leading-relaxed font-medium break-words whitespace-pre-line"
@@ -307,19 +308,20 @@ export function VerseView({
                   )
                 })}
 
-            {segments
-              .filter((s) => s.key === 'translation')
-              .map((s) => (
-                <div key={s.key} data-field="translation">
-                  <div className="scripture-section-header">Translation</div>
-                  <blockquote
-                    className="mb-5 border-l-2 border-amber-500/70 pl-4 py-1 leading-relaxed font-medium break-words"
-                    style={{ color: 'var(--text-primary)', fontSize: 'var(--font-size-translation)' }}
-                  >
-                    {renderSegmentWithHighlights(s, highlights, handleHighlightClick)}
-                  </blockquote>
-                </div>
-              ))}
+            {showTranslation &&
+              segments
+                .filter((s) => s.key === 'translation')
+                .map((s) => (
+                  <div key={s.key} data-field="translation">
+                    <div className="scripture-section-header">Translation</div>
+                    <blockquote
+                      className="mb-5 border-l-2 border-amber-500/70 pl-4 py-1 leading-relaxed font-medium break-words"
+                      style={{ color: 'var(--text-primary)', fontSize: 'var(--font-size-translation)' }}
+                    >
+                      {renderSegmentWithHighlights(s, highlights, handleHighlightClick)}
+                    </blockquote>
+                  </div>
+                ))}
 
             {showPurport && segments.some((s) => s.key.startsWith('purport-')) && (
               <div data-field="purport">
@@ -327,7 +329,7 @@ export function VerseView({
                   record.devanagari ||
                     record.transliteration ||
                     record.synonyms ||
-                    segments.some((s) => s.key === 'translation'),
+                    (showTranslation && segments.some((s) => s.key === 'translation')),
                 ) && <div className="scripture-section-header">Purport</div>}
                 <div
                   className="text-neutral-300 leading-[var(--reading-line-height)] space-y-4 break-words"
@@ -339,6 +341,13 @@ export function VerseView({
                       const classification = classifyPurportParagraph(s.text)
                       const rendered = renderSegmentWithHighlights(s, highlights, handleHighlightClick)
 
+                      if (classification.kind === 'scripture-marker') {
+                        return (
+                          <div key={s.key} className="scripture-section-header mt-6 mb-2">
+                            {classification.label}
+                          </div>
+                        )
+                      }
                       if (classification.kind === 'verse') {
                         return (
                           <p key={s.key} className="purport-verse">

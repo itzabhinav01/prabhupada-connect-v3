@@ -226,10 +226,33 @@
   color: var(--text-primary);
 }
 
-/* Dialogue turns ("Reporter: ...", "Śrīla Prabhupāda: ..."). */
+/* Dialogue turns ("Reporter: ...", "Śrīla Prabhupāda.", "Dr. Singh."). */
 .speaker-name {
-  font-weight: 600;
-  color: var(--accent-color);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Dark / OLED / Forest themes: warm gold matching reading text opacity & brightness */
+:root .speaker-name,
+[data-theme="dark"] .speaker-name,
+[data-theme="oled"] .speaker-name,
+[data-theme="forest"] .speaker-name {
+  color: #f59e0b;
+  opacity: calc(var(--effective-brightness, 100%) * 0.95);
+}
+
+/* Light / Sepia / Sandalwood themes: rich warm brown matching book ink tone */
+[data-theme="light"] .speaker-name {
+  color: #78350f;
+  opacity: 0.95;
+}
+[data-theme="sepia"] .speaker-name {
+  color: #6b3e15;
+  opacity: 0.95;
+}
+[data-theme="sandalwood"] .speaker-name {
+  color: #713f12;
+  opacity: 0.95;
 }
 
 /* In-page find (Ctrl+F) — via the CSS Custom Highlight API, so these

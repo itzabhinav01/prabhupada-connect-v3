@@ -45,6 +45,7 @@ interface ReaderState {
   lineSpacing: LineSpacing
   showSanskrit: boolean
   showSynonyms: boolean
+  showTranslation: boolean
   showPurport: boolean
   showTransliteration: boolean
   showPronunciationGuide: boolean
@@ -59,6 +60,7 @@ interface ReaderState {
   setLineSpacing: (spacing: LineSpacing) => void
   toggleSanskrit: () => void
   toggleSynonyms: () => void
+  toggleTranslation: () => void
   togglePurport: () => void
   toggleTransliteration: () => void
   togglePronunciationGuide: () => void
@@ -73,6 +75,7 @@ export const useReaderStore = create<ReaderState>((set, get) => ({
   lineSpacing: 'normal',
   showSanskrit: true,
   showSynonyms: true,
+  showTranslation: true,
   showPurport: true,
   showTransliteration: true,
   showPronunciationGuide: true,
@@ -122,6 +125,12 @@ export const useReaderStore = create<ReaderState>((set, get) => ({
       const showSynonyms = !s.showSynonyms
       debouncedSave('showSynonyms', showSynonyms)
       return { showSynonyms }
+    }),
+  toggleTranslation: () =>
+    set((s) => {
+      const showTranslation = !s.showTranslation
+      debouncedSave('showTranslation', showTranslation)
+      return { showTranslation }
     }),
   togglePurport: () =>
     set((s) => {

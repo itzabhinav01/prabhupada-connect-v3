@@ -167,6 +167,8 @@ export function Header() {
   const toggleTransliteration = useReaderStore((s) => s.toggleTransliteration)
   const showSynonyms = useReaderStore((s) => s.showSynonyms)
   const toggleSynonyms = useReaderStore((s) => s.toggleSynonyms)
+  const showTranslation = useReaderStore((s) => s.showTranslation)
+  const toggleTranslation = useReaderStore((s) => s.toggleTranslation)
   const showPurport = useReaderStore((s) => s.showPurport)
   const togglePurport = useReaderStore((s) => s.togglePurport)
   const showPronunciationGuide = useReaderStore((s) => s.showPronunciationGuide)
@@ -502,6 +504,7 @@ export function Header() {
                       onClick: toggleTransliteration,
                     },
                     { label: 'Synonyms', active: showSynonyms, onClick: toggleSynonyms },
+                    { label: 'Translation', active: showTranslation, onClick: toggleTranslation },
                     { label: 'Purport', active: showPurport, onClick: togglePurport },
                     {
                       label: 'Sanskrit Meter',
