@@ -27,33 +27,38 @@ You do **not** need any programming or technical knowledge to install and use Pr
 
 ## 📖 Easy Beginner's Guide: How to Use the App
 
-*(Tip: Inside the app, you can also press **`F1`** or click the **`?` (User Guide)** button in the top-right corner at any time to read the built-in interactive manual!)*
+*(Tip: Inside the app, press **`F1`** or click the **`?` (User Guide)** button in the top-right corner to read the built-in interactive manual, or browse the complete [Offline User Manual (`USER_MANUAL.md`)](./USER_MANUAL.md)!)*
 
 ### 1. Opening Any Book
-- On the **left sidebar** (or the main **Library** home screen), click on any book title — such as *Bhagavad-gītā As It Is*, *Śrīmad-Bhāgavatam*, *Śrī Caitanya-caritāmṛta*, *Songs of the Vaiṣṇava Ācāryas*, or any small book like *The Journey of Self-Discovery* or *Coming Back*.
+- On the **left sidebar** (or the main **Library** home screen), click on any book title — such as *Bhagavad-gītā As It Is*, *Śrīmad-Bhāgavatam*, *Śrī Caitanya-caritāmṛta*, *Songs of the Vaiṣṇava Ācāryas*, or small books like *The Science of Self-Realization*, *Life Comes From Life*, *The Journey of Self-Discovery*, or *Coming Back*.
 - Click any **Canto / Līlā → Chapter** to start reading.
 - Use the **`←` and `→` arrow keys** on your keyboard (or the **`‹` / `›`** buttons in the top bar) to move to the previous or next verse.
 
 ### 2. Finding a Book Quickly or Jumping Straight to a Verse (`@`)
 Look at the search box at the top of the **left sidebar** (`Filter books or @bg 2.13…`):
-- **To filter books by name**: Type part of a book's name (for example: `gita`, `bhagavatam`, `coming back`, `jsd`, or `songs`) and the left list will filter immediately.
+- **To filter books by name**: Type part of a book's name (for example: `gita`, `bhagavatam`, `coming back`, `jsd`, `life comes`, or `songs`) and the left list will filter immediately.
 - **To jump straight to a specific verse**: Type **`@`** followed by the verse reference and press **Enter**!
   - `@bg 2.13` → Opens *Bhagavad-gītā* Chapter 2, Text 13 in a new tab
   - `@sb 1.1.1` → Opens *Śrīmad-Bhāgavatam* Canto 1, Chapter 1, Text 1
   - `@cc adi 1.1` → Opens *Śrī Caitanya-caritāmṛta* Ādi-līlā 1.1
 
-### 3. Searching Inside All Books (`🔍`)
-- Click the **Magnifying Glass (`🔍`)** icon in the top-right corner (next to the `?` and `⚙` Settings icons), or press **`Ctrl + K`**.
+### 3. Searching Inside All Books & Auto-Scroll (`🔍` / `Ctrl + K`)
+- Click the **Magnifying Glass (`🔍`)** icon in the top-right corner (or press **`Ctrl + K`** / **`Ctrl + Shift + S`** for Full Search Studio).
 - Type any word or phrase (for example: `surrender`, `krishna`, `soul`, or `"chanting hare krishna"`).
-- Click on **any search result** and it will automatically open that verse in a **new tab** with your search words highlighted!
+- Click on **any search result**: the app automatically opens that verse in a new tab and **smoothly scrolls straight to the exact matching phrase** with an amber glowing highlight!
+- **In-Page Find (`Ctrl + F`)**: Quickly find text on the current page and press **`F3`** / **`Shift + F3`** to jump between matching occurrences with automatic scrolling.
 
-### 4. Changing Text Size, Layout & Themes (`T` and `⚙`)
-- **Text Size & Verse Sections (`T 14px` button)**: While reading any chapter, click the **`T`** button in the top reader bar to:
-  - Make the text **larger or smaller** (`A-` / `A+`)
-  - Change line spacing and page width
-  - Show or hide **Devanāgarī**, **Transliteration**, **Word-for-word Synonyms**, **Translation**, or **Purport**
-  - Switch between **Continuous Scroll** (whole chapter on one page) and **Focus Mode** (one verse at a time)
-- **8 Color Themes (`⚙ Settings`)**: Click the **Gear icon (`⚙`)** in the top-right corner (or bottom-left) to pick from 8 soothing reading themes (*Sacred Gold Dark*, *Pure Black OLED*, *Parchment Light*, *Sepia Manuscript*, *Sandalwood*, *Vrindavan Forest*, *Midnight Nectar*, or your own *Custom Palette*).
+### 4. Reading View, Visible Layers & Recitation Mode (`T 14px`)
+- **Native Document Flow (Zero Overlap)**: Continuous reading uses natural document layout. You can scale reader text from 12px to 32px+ without any overlapping, clipping, or layout glitches across all books.
+- **Toggle Visible Layers (Including Translation Toggle)**: Click the **`T`** button in the reader toolbar to show or hide:
+  - **Devanāgarī** Sanskrit / Bengali text
+  - **Transliteration** (IAST)
+  - **Synonyms** (word-for-word meanings)
+  - **Translation** (toggle off to read/chant Vaiṣṇava songs and ślokas without English meanings taking up space!)
+  - **Purport**
+- **Dialogue Speaker Highlighting**: In conversation books (*Life Comes From Life*, *Dialectic Spiritualism*, *Perfect Questions Perfect Answers*, conversations), speakers (*Śrīla Prabhupāda:*, *Dr. Singh:*, *Bob:*) are highlighted in warm gold (dark theme) and rich brown (light theme) with carefully balanced brightness and opacity to eliminate eye strain during night reading.
+- **Cleaned Scripture Hierarchy**: Sūtra titles and chapter headers across *Nārada-bhakti-sūtra*, *The Science of Self-Realization*, and *The Quest for Enlightenment* are cleanly structured as elegant headings, with duplicate book titles removed.
+- **8 Color Themes (`⚙ Settings`)**: Pick from 8 soothing themes (*Sacred Gold Dark*, *Pure Black OLED*, *Parchment Light*, *Sepia Manuscript*, *Sandalwood*, *Vrindavan Forest*, *Midnight Nectar*, or your own *Custom Palette*).
 
 ### 5. In-App PDF Reader (Read Scans & Imported Books Inside the App!)
 - **Read Scanned Editions In-App**: Books such as *Bhakti-rasāmṛta-sindhu Subhodinī* or user-imported PDF files open directly in dedicated tabs with crystal-clear high-DPI canvas rendering.

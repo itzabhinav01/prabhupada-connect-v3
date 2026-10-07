@@ -217,19 +217,32 @@ export function HelpTab() {
       {
         id: 'reading-view',
         category: 'Reading View',
-        title: '1. Scriptural Reading View & Navigation',
+        title: '1. Scriptural Reading View, Layers & Dialogue Highlighting',
         body: (
-          <div className="space-y-2 text-sm text-neutral-300">
+          <div className="space-y-3 text-sm text-neutral-300">
             <p>
-              Each verse shows up to five parts, toggleable in Settings → Reading: Devanāgarī, IAST
-              transliteration, word-for-word Synonyms, Translation, and Purport.
+              Each verse displays up to five modular text layers, customizable on-the-fly via the <code className="text-amber-300">T 14px</code> reader menu or in <strong className="text-neutral-100">Settings → Reading</strong>: Devanāgarī, IAST transliteration, word-for-word Synonyms, Translation, and Purport.
             </p>
+            <ul className="list-disc list-inside space-y-1.5 text-neutral-300">
+              <li>
+                <strong className="text-amber-300">Translation Toggle (Singing &amp; Recitation Mode):</strong> In the <code className="text-amber-300">T</code> appearance popover under <em>Visible Layers</em>, you can now toggle the English Translation on or off. This is ideal for chanting and singing Vaiṣṇava songs (such as <em>Prārthanā</em>, <em>Śaraṇāgati</em>, or <em>Gītāvalī</em>) or reciting Sanskrit verses where you want the original song lyrics and synonyms without taking up room with translations.
+              </li>
+              <li>
+                <strong className="text-amber-300">Native Document Flow (Zero Overlap):</strong> Continuous reading uses a natural document layout engine. You can scale reader typography from 12px to 32px+ without any text overlapping, collision, or layout breakage across all books and cantos.
+              </li>
+              <li>
+                <strong className="text-amber-300">Dialogue Speaker Highlighting:</strong> In philosophical conversation books (such as <em>Life Comes From Life</em>, <em>Dialectic Spiritualism</em>, <em>Perfect Questions Perfect Answers</em>, and recorded room conversations), speakers (e.g. <em>Śrīla Prabhupāda:</em>, <em>Dr. Singh:</em>, <em>Bob:</em>) are highlighted in eye-comforting warm gold in dark themes and earthy brown in light themes, with carefully matched text opacity to prevent eye strain during long nighttime reading sessions.
+              </li>
+              <li>
+                <strong className="text-amber-300">Cleaned Scripture Hierarchy:</strong> Section markers and sūtra titles (such as in <em>Nārada-bhakti-sūtra</em>, <em>The Science of Self-Realization</em>, and <em>The Quest for Enlightenment</em>) are formatted cleanly as elegant typographic headings rather than intrusive pill badges, with duplicate book titles automatically suppressed.
+              </li>
+            </ul>
             <p>Navigate with plain ← / → (or J/K) to step verse-by-verse, or Alt+← / Alt+→ as an alternate binding.</p>
             <p>
               The breadcrumb above the reader (Book › Canto › Chapter › Verse) is fully clickable — each
               segment opens a dropdown to jump anywhere in that level.
             </p>
-            <p>Toggle Continuous (scroll through the whole chapter) vs. Focus (one verse at a time) mode from the toolbar.</p>
+            <p>Toggle Continuous (scroll smoothly through the whole chapter) vs. Focus (one verse at a time) mode from the top toolbar.</p>
           </div>
         ),
       },
@@ -335,6 +348,9 @@ export function HelpTab() {
             <p className="mt-2">
               Diacritic-tolerant matching: typing "krishna" or "sankirtan" also matches "Kṛṣṇa" /
               "saṅkīrtana" — see the FAQ below for exactly how far this goes.
+            </p>
+            <p className="mt-2">
+              <strong className="text-amber-300">Automatic Search Result Scrolling &amp; In-Page Find:</strong> Clicking any search result instantly opens the target verse and smoothly scrolls straight to the exact matching phrase with amber highlight glowing. Use <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-xs">Ctrl+F</kbd> for in-page find, and press <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-xs">F3</kbd> or <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-xs">Shift+F3</kbd> to jump between matching occurrences.
             </p>
           </div>
         ),
