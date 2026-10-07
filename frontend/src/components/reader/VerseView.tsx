@@ -92,7 +92,7 @@ export function VerseView({ record }: { record: VerseRecord }) {
   }
 
   return (
-    <article data-verse-key={record.recordKey} className="pb-10 border-b border-neutral-800/60 last:border-b-0">
+    <article data-verse-key={record.recordKey} className="pb-5 border-b border-neutral-800/60 last:border-b-0">
       <header>
         <div className="flex items-center justify-end gap-1.5 mb-2">
           <button

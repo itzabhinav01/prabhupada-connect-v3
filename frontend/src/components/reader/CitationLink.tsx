@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useRef, useState } from 'react'
 
 import { getVerseRecord } from '../../services/api'
 import { useOpenReaderForVerse } from '../tabs/useOpenReaderForVerse'
@@ -14,15 +14,46 @@ export function CitationLink({ citation, children }: { citation: ResolvedCitatio
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [hovering, setHovering] = useState(false)
   const [missing, setMissing] = useState(false)
+  const [placement, setPlacement] = useState<'top' | 'bottom'>('top')
+  const [horizontalAlign, setHorizontalAlign] = useState<'center' | 'left' | 'right'>('center')
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  const updatePlacement = () => {
+    if (!triggerRef.current) return
+    const rect = triggerRef.current.getBoundingClientRect()
+    const spaceAbove = rect.top
+    const spaceBelow = window.innerHeight - rect.bottom
+    // Estimated tooltip height with padding and citation title
+    const estimatedHeight = 180
+
+    // Intelligently flip up/down: if not enough room above or more room below, position down!
+    if (spaceAbove < estimatedHeight && spaceBelow > spaceAbove) {
+      setPlacement('bottom')
+    } else {
+      setPlacement('top')
+    }
+
+    // Intelligently prevent left/right screen overflow
+    const halfWidth = 144 // half of w-72 (288px)
+    const centerX = rect.left + rect.width / 2
+    if (centerX - halfWidth < 12) {
+      setHorizontalAlign('left')
+    } else if (centerX + halfWidth > window.innerWidth - 12) {
+      setHorizontalAlign('right')
+    } else {
+      setHorizontalAlign('center')
+    }
+  }
 
   const handleMouseEnter = () => {
+    updatePlacement()
     setHovering(true)
     if (preview !== null || loadingPreview) return
     setLoadingPreview(true)
     getVerseRecord(citation.recordKey)
       .then((record) => {
         const text = record?.translation || record?.purports
-        setPreview(text ? truncate(text, 260) : 'Not available in this corpus.')
+        setPreview(text ? truncate(text, 280) : 'Not available in this corpus.')
       })
       .catch(() => setPreview('Not available in this corpus.'))
       .finally(() => setLoadingPreview(false))
@@ -42,6 +73,7 @@ export function CitationLink({ citation, children }: { citation: ResolvedCitatio
   return (
     <span className="relative inline-block" onMouseEnter={handleMouseEnter} onMouseLeave={() => setHovering(false)}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={handleClick}
         className={`inline-flex items-center font-medium cursor-pointer transition-colors ${
@@ -54,11 +86,22 @@ export function CitationLink({ citation, children }: { citation: ResolvedCitatio
         {children}
       </button>
       {hovering && (
-        <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 rounded-lg border border-neutral-700 bg-neutral-900/95 p-3 text-xs leading-relaxed text-neutral-200 shadow-2xl pointer-events-none backdrop-blur-md">
-          <div className="font-semibold text-amber-400 mb-1 pb-1 border-b border-neutral-800">
-            {citation.label || citation.raw}
+        <span
+          className={`absolute z-50 w-72 rounded-lg border border-neutral-700 bg-neutral-900/95 p-3 text-xs leading-relaxed text-neutral-200 shadow-2xl pointer-events-none backdrop-blur-md animate-in fade-in duration-150 ${
+            placement === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2'
+          } ${
+            horizontalAlign === 'left'
+              ? 'left-0'
+              : horizontalAlign === 'right'
+              ? 'right-0'
+              : 'left-1/2 -translate-x-1/2'
+          }`}
+        >
+          <div className="font-semibold text-amber-400 mb-1 pb-1 border-b border-neutral-800 flex items-center justify-between">
+            <span>{citation.label || citation.raw}</span>
+            <span className="text-[10px] text-neutral-500 font-normal">Click to open</span>
           </div>
-          <div className="text-neutral-300">
+          <div className="text-neutral-300 max-h-56 overflow-y-auto pr-1">
             {loadingPreview ? 'Loading verse preview…' : preview}
           </div>
         </span>

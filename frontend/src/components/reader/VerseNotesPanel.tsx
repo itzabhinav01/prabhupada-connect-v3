@@ -256,14 +256,14 @@ export function VerseNotesPanel({ verseId, reference }: { verseId: string; refer
   }
 
   return (
-    <div className="mt-8 border-t border-neutral-800/80 pt-6">
+    <div className="mt-5 border-t border-neutral-800/50 pt-3.5">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3.5">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold tracking-widest uppercase text-amber-500/90">
+          <span className="text-[11px] font-bold tracking-widest uppercase text-amber-500/85">
             Personal Realizations &amp; Notes
           </span>
-          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 border border-neutral-700/60">
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 border border-neutral-700/60">
             {notes.length}
           </span>
         </div>
@@ -278,25 +278,9 @@ export function VerseNotesPanel({ verseId, reference }: { verseId: string; refer
         )}
       </div>
 
-      {/* Empty State */}
-      {!editing && notes.length === 0 && (
-        <div className="rounded-lg border border-neutral-800/60 bg-neutral-900/30 p-4 text-center">
-          <p className="text-xs text-neutral-500 italic mb-2">
-            No personal realizations added for this verse yet.
-          </p>
-          <button
-            type="button"
-            onClick={() => startEditing(null)}
-            className="inline-flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 underline underline-offset-2"
-          >
-            <Plus size={12} /> Click here to record reflections and notes
-          </button>
-        </div>
-      )}
-
       {/* Saved Realizations List */}
       {!editing && notes.length > 0 && (
-        <div className="flex flex-col gap-3 mb-4">
+        <div className="flex flex-col gap-2.5 my-2.5">
           {notes.map((note) => (
             <article
               key={note.id}

@@ -55,6 +55,7 @@ export function ReaderCanvas() {
   const chapterRecords = useNavigationStore((s) => s.chapterRecords)
   const isLoadingChapter = useNavigationStore((s) => s.isLoadingChapter)
   const selectedBook = useNavigationStore((s) => s.selectedBook)
+  const selectedChapter = useNavigationStore((s) => s.selectedChapter)
   const readingMode = useNavigationStore((s) => s.readingMode)
   const activeVerseId = useNavigationStore((s) => s.activeVerseId)
   const nextVerse = useNavigationStore((s) => s.nextVerse)
@@ -187,7 +188,11 @@ export function ReaderCanvas() {
           else decreaseFontSize()
         }}
       >
-        {readingMode === 'continuous' ? <ContinuousReader records={chapterRecords} /> : <FocusReader records={chapterRecords} />}
+        {readingMode === 'continuous' ? (
+          <ContinuousReader key={`${selectedBook.bookKey}_${selectedChapter?.chapterKey ?? activeRecord?.parentKey ?? 'all'}`} records={chapterRecords} />
+        ) : (
+          <FocusReader records={chapterRecords} />
+        )}
         {find.isOpen && <InPageFindBar find={find} />}
         {zoomBadgeVisible && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-neutral-800/90 border border-neutral-700 text-xs text-neutral-200 shadow-lg transition-opacity">

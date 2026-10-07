@@ -9,37 +9,61 @@ import { VerseView } from './VerseView'
 export function ContinuousReader({ records }: { records: VerseRecord[] }) {
   const parentRef = useRef<HTMLDivElement>(null)
   const readingWidth = useReaderStore((s) => s.readingWidth)
+  const fontSize = useReaderStore((s) => s.fontSize)
+  const lineSpacing = useReaderStore((s) => s.lineSpacing)
+  const showTransliteration = useReaderStore((s) => s.showTransliteration)
+  const showSynonyms = useReaderStore((s) => s.showSynonyms)
+  const showPurport = useReaderStore((s) => s.showPurport)
   const activeVerseId = useNavigationStore((s) => s.activeVerseId)
   const setActiveVerse = useNavigationStore((s) => s.setActiveVerse)
   const jumpToken = useNavigationStore((s) => s.jumpToken)
   const selectedChapterKey = useNavigationStore((s) => s.selectedChapter?.chapterKey ?? null)
 
+  const estimateSize = (index: number) => {
+    const r = records[index]
+    if (!r) return 260
+    let est = 45
+    if (r.devanagari) est += 65
+    if (showTransliteration && r.transliteration) est += 55
+    if (showSynonyms && r.synonyms) est += Math.min(Math.round(r.synonyms.length * 0.22), 200)
+    if (r.translation) est += Math.min(Math.round(r.translation.length * 0.32), 220)
+    if (showPurport && r.purports) est += Math.min(Math.round(r.purports.length * 0.35), 3500)
+    est += 45 // compact personal notes header
+    return Math.max(est, 140)
+  }
+
   const virtualizer = useVirtualizer({
     count: records.length,
     getScrollElement: () => parentRef.current,
-    // Measured directly against real verses (SB 3.5.1-8): 1160-1890px, ~1400
-    // average, with the VerseNotesPanel now added below every verse. 600 was
-    // right when verses were shorter, before that panel existed — badly
-    // under-estimating meant scrollToIndex landed well short of the real
-    // target before measurement corrected it. The corrective second scroll
-    // below handles final accuracy regardless; this just keeps the initial
-    // jump small for both very short and very long verses.
-    estimateSize: () => 1400,
+    getItemKey: (index) => records[index]?.recordKey ?? index,
+    estimateSize,
     overscan: 4,
   })
 
-  // When split view opens/closes or container width changes, dynamic line wrapping
-  // drastically alters verse heights. Re-measure virtual items so the full verse
-  // content always loads and scroll boundaries are accurate.
+  // When split view opens/closes or window width changes, line wrapping changes.
+  // Only re-measure when client width actually changes by > 8px, avoiding clearing
+  // measurements during ordinary scrolling or minor vertical layout shifts.
   useEffect(() => {
     const el = parentRef.current
     if (!el) return
-    const ro = new ResizeObserver(() => {
-      virtualizer.measure()
+    let lastWidth = el.clientWidth
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+      const newWidth = entry.contentRect.width
+      if (Math.abs(newWidth - lastWidth) > 8) {
+        lastWidth = newWidth
+        virtualizer.measure()
+      }
     })
     ro.observe(el)
     return () => ro.disconnect()
   }, [virtualizer])
+
+  // Re-measure when active typography/toggle settings change
+  useEffect(() => {
+    virtualizer.measure()
+  }, [fontSize, readingWidth, lineSpacing, showTransliteration, showSynonyms, showPurport, virtualizer])
 
   // Scroll restoration: jump to the current active verse whenever a new
   // chapter loads, an explicit "jump" is requested (breadcrumb click), or
