@@ -94,3 +94,14 @@ pub fn search_imported_books(state: State<AppState>, query: String) -> Result<Ve
     let conn = state.user_books_db.lock().map_err(lock_err)?;
     user_books::search_imported_books(&conn, &query, 100).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn load_pdf_bytes(path: String) -> Result<tauri::ipc::Response, String> {
+    let p = std::path::Path::new(&path);
+    if !p.is_file() {
+        return Err(format!("PDF file not found: {path}"));
+    }
+    let bytes = std::fs::read(p).map_err(|e| format!("failed to read PDF file: {e}"))?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+

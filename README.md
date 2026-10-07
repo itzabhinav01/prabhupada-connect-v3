@@ -55,14 +55,23 @@ Look at the search box at the top of the **left sidebar** (`Filter books or @bg 
   - Switch between **Continuous Scroll** (whole chapter on one page) and **Focus Mode** (one verse at a time)
 - **8 Color Themes (`⚙ Settings`)**: Click the **Gear icon (`⚙`)** in the top-right corner (or bottom-left) to pick from 8 soothing reading themes (*Sacred Gold Dark*, *Pure Black OLED*, *Parchment Light*, *Sepia Manuscript*, *Sandalwood*, *Vrindavan Forest*, *Midnight Nectar*, or your own *Custom Palette*).
 
-### 5. Highlighting Text, Taking Notes & Bookmarking Verses
+### 5. In-App PDF Reader (Read Scans & Imported Books Inside the App!)
+- **Read Scanned Editions In-App**: Books such as *Bhakti-rasāmṛta-sindhu Subhodinī* or user-imported PDF files open directly in dedicated tabs with crystal-clear high-DPI canvas rendering.
+- **Top Reader Toolbar**:
+  - **Page Navigation**: Jump to any page with the `[ 1 ] / N` box or use First, Previous, Next, Last buttons.
+  - **Zoom & Presets**: Choose **Fit Width** (ideal for comfortable reading), **Fit Page**, or 50%–200% zoom presets (or use `Ctrl + MouseWheel`).
+  - **Continuous Scroll vs. Single Page**: Toggle between smooth vertical continuous reading (with lazy memory-efficient page rendering) and focused single-page view.
+  - **Rotate & External Viewer**: Rotate pages 90° clockwise, or click **System Viewer** if you wish to print or open in Adobe Acrobat.
+
+### 6. Highlighting Text, Taking Notes & Bookmarking Verses
 - **Highlight in 8 Colors**: Use your mouse to select any sentence in a verse or purport — a small popup bar will appear. Click any of the **8 color circles** to highlight that text!
 - **Write Personal Realization Notes**: Select text and click **`+ Note`** in the popup bar, or click the **`✎ Note`** button in the top reader bar to write notes on the current verse.
-  - *Tip*: Type `[[BG 18.66]]` inside a note to create a clickable link to that verse, or `#bhakti` to organize notes by tags!
+  - *Tip*: Type `[[BG 18.66]]` or `@bg 18.66` inside a note to create an interactive link that previews the translation on hover and opens the verse on click! Use `#tags` to categorize realizations.
+  - *Obsidian & Markdown Export*: Export your entire realization library to an Obsidian vault (`.zip`) or a single Markdown file in the Notes tab.
 - **Bookmark a Verse**: Click the **Star (`★`)** icon in the top reader bar to bookmark the verse you are reading.
 - **View All Your Highlights, Notes & Bookmarks**: Click the **`⋯` (More)** menu in the top-right corner to open your **Bookmarks**, **Notes**, **Highlights**, or **Reading History** tabs.
 
-### 6. Cloud Sync: Back Up & Sync Your Highlights, Notes & Bookmarks (Zero Setup!)
+### 7. Cloud Sync: Back Up & Sync Your Highlights, Notes & Bookmarks (Zero Setup!)
 Want your highlights, notes, and bookmarks saved safely in the cloud and synced across computers?
 1. Click the **`⚙` (Settings)** icon and select **Cloud Sync** on the left.
 2. You do **not** need to configure any server — the official cloud server is already connected!
@@ -80,7 +89,9 @@ Want your highlights, notes, and bookmarks saved safely in the cloud and synced 
 | Shortcut | What It Does |
 | :--- | :--- |
 | **`F1`** | Open the built-in **User Guide & Manual** |
-| **`←`** / **`→`** (or **`J`** / **`K`**) | Go to Previous / Next verse |
+| **`←`** / **`→`** (or **`J`** / **`K`**) | Previous / Next verse (reader) or page (PDF) |
+| **`PageUp`** / **`PageDown`** | Previous / Next page (PDF / reader) |
+| **`Home`** / **`End`** | First / Last page in PDF viewer |
 | **`Ctrl + K`** | Quick Search popup |
 | **`Ctrl + Shift + S`** | Open Full Search Studio & Word Wheel |
 | **`Ctrl + F`** | Find text on the current page (or filter books in the sidebar) |
@@ -88,8 +99,9 @@ Want your highlights, notes, and bookmarks saved safely in the cloud and synced 
 | **`F11`** | Toggle distraction-free **Zen Fullscreen Mode** (`Esc` to exit) |
 | **`Ctrl + Shift + B`** | Bookmark the current verse |
 | **`Ctrl + Shift + L`** | Switch between the 8 color themes |
-| **`Ctrl + =`** / **`Ctrl + -`** | Zoom reader text In / Out |
+| **`Ctrl + =`** / **`Ctrl + -`** | Zoom reader text or PDF in / out (also `Ctrl + Wheel`) |
 | **`Ctrl + T`** / **`Ctrl + W`** | Open a new Library tab / Close the current tab |
+| **`Ctrl + Tab`** / **`Ctrl + Shift + Tab`** | Cycle between open tabs |
 
 ---
 ---

@@ -163,6 +163,24 @@ export async function searchImportedBooks(query: string): Promise<SearchHit[]> {
   }
 }
 
+export async function loadPdfBytes(path: string): Promise<Uint8Array> {
+  try {
+    const raw = await invoke<ArrayBuffer | number[] | Uint8Array>('load_pdf_bytes', { path })
+    if (raw instanceof Uint8Array) {
+      return raw
+    }
+    if (raw instanceof ArrayBuffer) {
+      return new Uint8Array(raw)
+    }
+    if (Array.isArray(raw)) {
+      return new Uint8Array(raw)
+    }
+    return new Uint8Array(raw as unknown as ArrayBuffer)
+  } catch (e) {
+    throw new ApiError('loadPdfBytes', e)
+  }
+}
+
 // --- Concordance -------------------------------------------------------------
 
 export interface ConcordanceBookCount {

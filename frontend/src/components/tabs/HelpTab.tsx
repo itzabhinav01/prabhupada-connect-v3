@@ -162,6 +162,7 @@ function ShortcutRow({ keys, action }: { keys: string; action: string }) {
 const CATEGORIES = [
   'Quick Start',
   'Reading View',
+  'PDF Viewer',
   'Split View',
   'Zen Mode',
   'Sanskrit Meters',
@@ -233,9 +234,35 @@ export function HelpTab() {
         ),
       },
       {
+        id: 'pdf-viewer',
+        category: 'PDF Viewer',
+        title: '2. In-App High-Performance PDF Reader',
+        body: (
+          <div className="space-y-3 text-sm text-neutral-300">
+            <p>
+              Prabhupāda Connect includes a built-in, 100% offline PDF reader powered by high-resolution vector canvas rendering. Scanned editions (such as <em>Bhakti-rasāmṛta-sindhu Subhodinī</em> or your imported PDF manuscripts) open right inside the application in their own tabs.
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-neutral-300">
+              <li>
+                <strong className="text-amber-300">Page Navigation:</strong> Use the top toolbar controls (First, Previous, Next, Last) or type any page number directly into the <code className="text-amber-300">[ 1 ] / N</code> box and press <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-xs">Enter</kbd>.
+              </li>
+              <li>
+                <strong className="text-amber-300">Zoom &amp; Fit Presets:</strong> Choose between <strong className="text-neutral-200">Fit Width</strong> (auto-fills comfortable reading width) and <strong className="text-neutral-200">Fit Page</strong> (fits full page), or select custom scales from 50% to 200%. You can also zoom dynamically using <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-xs">Ctrl + =</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-xs">Ctrl + -</kbd> or <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-xs">Ctrl + Wheel</kbd>.
+              </li>
+              <li>
+                <strong className="text-amber-300">Continuous Scroll vs. Single Page:</strong> Toggle between smooth vertical continuous page flow (with lazy viewport rendering for fast performance on 500+ page books) and single-page display.
+              </li>
+              <li>
+                <strong className="text-amber-300">Rotation &amp; External Viewer:</strong> Click the rotate button (<code className="text-amber-300">⟳</code>) to rotate 90° clockwise. Need to print or use native OS features? Click <strong className="text-neutral-200">System Viewer</strong> to open the file in Adobe Acrobat or Edge.
+              </li>
+            </ul>
+          </div>
+        ),
+      },
+      {
         id: 'split-view',
         category: 'Split View',
-        title: '2. Split-View Comparative Study (Alt+S)',
+        title: '3. Split-View Comparative Study (Alt+S)',
         body: (
           <div className="space-y-2 text-sm text-neutral-300">
             <p>Alt+S cycles the reader through three states: normal → Parallel Scripture → Realization Notebook → normal.</p>
@@ -255,7 +282,7 @@ export function HelpTab() {
       {
         id: 'zen-mode',
         category: 'Zen Mode',
-        title: '3. Zen Focus Mode (F11)',
+        title: '4. Zen Focus Mode (F11)',
         body: (
           <div className="space-y-2 text-sm text-neutral-300">
             <p>F11 or Ctrl+Shift+F hides the sidebar and tab bar for distraction-free reading. Press Escape or the floating exit button (top-right) to leave.</p>
@@ -266,7 +293,7 @@ export function HelpTab() {
       {
         id: 'meters',
         category: 'Sanskrit Meters',
-        title: '4. Classical Sanskrit Prosody & Meter Chanting Guides',
+        title: '5. Classical Sanskrit Prosody & Meter Chanting Guides',
         body: (
           <div className="space-y-2 text-sm text-neutral-300">
             <p>
@@ -285,7 +312,7 @@ export function HelpTab() {
       {
         id: 'advanced-search',
         category: 'Advanced Search',
-        title: '5. Folio Advanced Search Suite & Operator Reference',
+        title: '6. Folio Advanced Search Suite & Operator Reference',
         body: (
           <div className="space-y-2 text-sm text-neutral-300">
             <p>Ctrl+Shift+S (from anywhere) opens the Word Wheel / Advanced Search modal on top of the Search tab.</p>
@@ -315,7 +342,7 @@ export function HelpTab() {
       {
         id: 'concordance',
         category: 'Concordance',
-        title: '6. Sanskrit Reverse Lexicon & Concordance',
+        title: '7. Sanskrit Reverse Lexicon & Concordance',
         body: (
           <div className="space-y-2 text-sm text-neutral-300">
             <p>Click any Sanskrit word in a verse's Synonyms line to open the Concordance drawer — every corpus occurrence of that lemma, grouped by book with frequency counts.</p>
@@ -326,13 +353,12 @@ export function HelpTab() {
       {
         id: 'notes-obsidian',
         category: 'Notes & Obsidian',
-        title: '7. Personal Study: Notes, Wiki-Links, #Tags & Obsidian Export',
+        title: '8. Personal Study: Notes, Wiki-Links, #Tags & Obsidian Export',
         body: (
           <div className="space-y-2 text-sm text-neutral-300">
-            <p>Every note can have a title, and its content supports two special tokens:</p>
+            <p>Every note can have a title, and its content supports rich formatting, citations, and tags:</p>
             <p>
-              <code className="text-amber-400">[[BG 18.66]]</code> renders as a clickable gold link that jumps
-              straight to that verse.
+              <code className="text-amber-400">[[BG 18.66]]</code> or <code className="text-amber-400">@bg 18.66</code> renders as a clickable gold link that shows translation preview on hover and opens the verse in a new tab on click.
             </p>
             <p>
               <code className="text-amber-400">#tag-name</code> builds the tag cloud at the top of the Notes tab
@@ -345,11 +371,16 @@ export function HelpTab() {
       {
         id: 'book-import',
         category: 'Book Import',
-        title: '8. Book Import & Universal AI Conversion Prompt',
+        title: '9. Book & PDF Import (Offline Preservation & AI Conversion)',
         body: (
           <div className="space-y-2 text-sm text-neutral-300">
-            <p>Settings → Corpus Management lets you import additional books as JSON archives (see the exact schema below) — imported books appear in the Library and are fully searchable alongside the bundled corpus.</p>
-            <p>To convert a plain-text or PDF book into the required JSON with an AI assistant, use this prompt:</p>
+            <p>
+              In <strong className="text-neutral-100">Settings → Corpus Management</strong>, you can import both structured text books (JSON archives) and original PDF book scans (like <em>Brs Subhodini</em>).
+            </p>
+            <p>
+              When importing a PDF, the app safely copies it to your local application data directory so it remains permanently available offline inside the high-performance in-app PDF reader.
+            </p>
+            <p>To convert any plain-text or PDF book into a structured JSON archive with an AI assistant, use this prompt:</p>
             <CopyBlock text={AI_CONVERSION_PROMPT} />
           </div>
         ),
@@ -357,7 +388,7 @@ export function HelpTab() {
       {
         id: 'supabase-sync',
         category: 'Supabase Sync',
-        title: '9. Cloud Sync (Zero-Setup Sign In, Sign Up & Auto-Sync)',
+        title: '10. Cloud Sync (Zero-Setup Sign In, Sign Up & Auto-Sync)',
         body: (
           <div className="space-y-2 text-sm text-neutral-300">
             <p>
@@ -384,13 +415,15 @@ export function HelpTab() {
       {
         id: 'shortcuts',
         category: 'Shortcuts',
-        title: '10. Complete Keyboard Shortcuts Cheatsheet',
+        title: '11. Complete Keyboard Shortcuts Cheatsheet',
         body: (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
             <ShortcutRow keys="F1" action="Open this User Manual" />
-            <ShortcutRow keys="←/→ or J/K" action="Previous / next verse" />
+            <ShortcutRow keys="←/→ or J/K" action="Previous / next verse (reader) or page (PDF)" />
+            <ShortcutRow keys="PageUp / PageDown" action="Previous / next page (PDF / reader)" />
+            <ShortcutRow keys="Home / End" action="First / last page (PDF)" />
             <ShortcutRow keys="Alt+←/→" action="Previous / next verse (alternate)" />
-            <ShortcutRow keys="Ctrl+=/-/0" action="Zoom reader text in/out/reset (also Ctrl+Wheel)" />
+            <ShortcutRow keys="Ctrl+=/-/0" action="Zoom text / PDF in/out/reset (also Ctrl+Wheel)" />
             <ShortcutRow keys="F11 / Ctrl+Shift+F" action="Toggle Zen mode" />
             <ShortcutRow keys="Alt+S" action="Cycle Split View (off → Parallel → Notebook)" />
             <ShortcutRow keys="Ctrl+Shift+S" action="Open Advanced Search / Word Wheel" />
@@ -410,7 +443,7 @@ export function HelpTab() {
       {
         id: 'faq',
         category: 'FAQ',
-        title: '11. FAQ & Troubleshooting',
+        title: '12. FAQ & Troubleshooting',
         body: (
           <div className="space-y-3 text-sm text-neutral-300">
             <div>

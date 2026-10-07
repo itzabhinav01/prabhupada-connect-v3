@@ -18,7 +18,7 @@ use commands::folders::{
 };
 use commands::imported_books::{
     get_imported_book_toc, get_imported_chapter_records, get_imported_verse_record, import_book_json,
-    import_book_pdf, list_imported_books, remove_imported_book, search_imported_books,
+    import_book_pdf, list_imported_books, load_pdf_bytes, remove_imported_book, search_imported_books,
 };
 use commands::navigation::{get_book_toc, get_books, get_chapter_verses};
 use commands::reader::{get_chapter_records, get_verse_record};
@@ -181,6 +181,7 @@ pub fn run() {
             get_imported_chapter_records,
             get_imported_verse_record,
             search_imported_books,
+            load_pdf_bytes,
             upsert_synced_highlight,
             insert_history_if_absent,
             window_minimize,
