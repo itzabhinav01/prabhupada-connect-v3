@@ -89,13 +89,23 @@ export function ReaderCanvas() {
   const prevSearchHit = () => goToSearchHit(searchHitIndex - 1)
 
   const find = useInPageFind(chapterRecords)
+  const effectiveQuery = find.isOpen
+    ? find.query
+    : searchHitVisible
+      ? searchHitQuery
+      : ''
+  const effectiveIndex = find.isOpen ? find.currentIndex : 0
+  const effectiveMatch = find.isOpen ? find.currentMatch : null
+  const effectiveTargetVerse = find.isOpen ? null : (searchHitVisible ? activeVerseId : null)
+
   useHighlightFindMatches(
     '[data-reader-canvas]',
-    find.isOpen ? find.query : '',
-    find.currentIndex,
-    find.matchCase,
-    find.wholeWord,
-    find.currentMatch,
+    effectiveQuery,
+    effectiveIndex,
+    find.isOpen ? find.matchCase : false,
+    find.isOpen ? find.wholeWord : false,
+    effectiveMatch,
+    effectiveTargetVerse,
   )
 
   // Global shortcuts (theme, zen, tabs, Ctrl+F dispatch, Escape) live in

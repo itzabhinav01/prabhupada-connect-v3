@@ -80,21 +80,32 @@ export function useHighlightFindMatches(
   matchCase = false,
   wholeWord = false,
   currentMatch: FindMatchMeta | null = null,
+  targetVerseKey: string | null = null,
 ) {
   const lastScrollKeyRef = useRef<string>('')
 
   useEffect(() => {
     if (!highlightApiAvailable()) return
-    const needle = matchCase ? query.trim() : normalizeIast(query.trim())
+    const cleanedQuery = query.replace(/^["'“”]+|["'“”]+$/g, '').trim()
+    if (!cleanedQuery) {
+      CSS.highlights.delete(ALL_MATCHES_NAME)
+      CSS.highlights.delete(ACTIVE_MATCH_NAME)
+      return
+    }
+
+    const needle = matchCase ? cleanedQuery : normalizeIast(cleanedQuery)
+    const terms = !matchCase && cleanedQuery.includes(' ')
+      ? cleanedQuery
+          .split(/\s+/)
+          .map((w) => normalizeIast(w.trim()))
+          .filter((w) => w.length > 1)
+      : []
+
+    let scrollTimer: number | null = null
 
     const scan = () => {
       const container = document.querySelector(containerSelector)
       if (!container) return
-      if (!needle) {
-        CSS.highlights.delete(ALL_MATCHES_NAME)
-        CSS.highlights.delete(ACTIVE_MATCH_NAME)
-        return
-      }
 
       const allRanges: Range[] = []
       const occurrences: RangeOccurrence[] = []
@@ -112,42 +123,57 @@ export function useHighlightFindMatches(
         },
       })
 
+      const textNodes: { node: Node; text: string; recordKey: string | null }[] = []
       let node: Node | null
       while ((node = walker.nextNode())) {
         const text = node.textContent ?? ''
         const verseEl = node.parentElement?.closest('[data-verse-key]')
         const recordKey = verseEl?.getAttribute('data-verse-key') ?? null
+        textNodes.push({ node, text, recordKey })
+      }
 
-        if (matchCase) {
-          for (const startOffset of findAllOccurrences(text, needle, wholeWord)) {
-            const range = new Range()
-            range.setStart(node, startOffset)
-            range.setEnd(node, startOffset + needle.length)
-            allRanges.push(range)
+      const scanForNeedle = (targetNeedle: string) => {
+        for (const item of textNodes) {
+          if (matchCase) {
+            for (const startOffset of findAllOccurrences(item.text, targetNeedle, wholeWord)) {
+              const range = new Range()
+              range.setStart(item.node, startOffset)
+              range.setEnd(item.node, startOffset + targetNeedle.length)
+              allRanges.push(range)
 
-            const occKey = recordKey ?? '__global'
-            const occIdx = verseOccurrences.get(occKey) ?? 0
-            verseOccurrences.set(occKey, occIdx + 1)
-            occurrences.push({ range, recordKey, occurrenceIndex: occIdx })
+              const occKey = item.recordKey ?? '__global'
+              const occIdx = verseOccurrences.get(occKey) ?? 0
+              verseOccurrences.set(occKey, occIdx + 1)
+              occurrences.push({ range, recordKey: item.recordKey, occurrenceIndex: occIdx })
+            }
+          } else {
+            const { text: normalizedText, offsetMap } = normalizeIastWithOffsets(item.text)
+            for (const idx of findAllOccurrences(normalizedText, targetNeedle, wholeWord)) {
+              const startOffset = offsetMap[idx]
+              const endOffset = offsetMap[idx + targetNeedle.length]
+              if (startOffset !== endOffset) {
+                const range = new Range()
+                range.setStart(item.node, startOffset)
+                range.setEnd(item.node, endOffset)
+                allRanges.push(range)
+
+                const occKey = item.recordKey ?? '__global'
+                const occIdx = verseOccurrences.get(occKey) ?? 0
+                verseOccurrences.set(occKey, occIdx + 1)
+                occurrences.push({ range, recordKey: item.recordKey, occurrenceIndex: occIdx })
+              }
+            }
           }
-          continue
         }
+      }
 
-        const { text: normalizedText, offsetMap } = normalizeIastWithOffsets(text)
-        for (const idx of findAllOccurrences(normalizedText, needle, wholeWord)) {
-          const startOffset = offsetMap[idx]
-          const endOffset = offsetMap[idx + needle.length]
-          if (startOffset !== endOffset) {
-            const range = new Range()
-            range.setStart(node, startOffset)
-            range.setEnd(node, endOffset)
-            allRanges.push(range)
+      // First search for the full phrase
+      scanForNeedle(needle)
 
-            const occKey = recordKey ?? '__global'
-            const occIdx = verseOccurrences.get(occKey) ?? 0
-            verseOccurrences.set(occKey, occIdx + 1)
-            occurrences.push({ range, recordKey, occurrenceIndex: occIdx })
-          }
+      // If full phrase had 0 matches (e.g. multi-term search), search for individual terms
+      if (allRanges.length === 0 && terms.length > 1) {
+        for (const term of terms) {
+          scanForNeedle(term)
         }
       }
 
@@ -157,12 +183,18 @@ export function useHighlightFindMatches(
         return
       }
 
-      // Identify active match range
+      // Identify active match range:
+      // 1. If explicit match from in-page find, use that
+      // 2. If navigated from search panel with a target verse, pick the first match in that verse!
+      // 3. Fallback to currentIndex
       let activeRange: Range | null = null
       if (currentMatch) {
         const found = occurrences.find(
           (o) => o.recordKey === currentMatch.recordKey && o.occurrenceIndex === currentMatch.occurrenceIndex,
         )
+        if (found) activeRange = found.range
+      } else if (targetVerseKey) {
+        const found = occurrences.find((o) => o.recordKey === targetVerseKey)
         if (found) activeRange = found.range
       }
       if (!activeRange) {
@@ -177,15 +209,17 @@ export function useHighlightFindMatches(
         CSS.highlights.delete(ACTIVE_MATCH_NAME)
       }
 
-      // Smoothly scroll to the active match when query or match index changes
-      const scrollKey = `${query}:${currentIndex}:${currentMatch?.recordKey ?? ''}:${currentMatch?.occurrenceIndex ?? -1}`
+      // Smoothly scroll to the active match when query, verse, or match index changes
+      const scrollKey = `${query}:${targetVerseKey ?? ''}:${currentIndex}:${currentMatch?.recordKey ?? ''}:${currentMatch?.occurrenceIndex ?? -1}`
       if (activeRange && scrollKey !== lastScrollKeyRef.current) {
         lastScrollKeyRef.current = scrollKey
-        requestAnimationFrame(() => {
+        if (scrollTimer) window.clearTimeout(scrollTimer)
+        // 120ms timeout ensures ContinuousReader's initial mount scroll has settled
+        scrollTimer = window.setTimeout(() => {
           if (container instanceof HTMLElement) {
             scrollRangeIntoView(activeRange, container)
           }
-        })
+        }, 120)
       }
     }
 
@@ -199,9 +233,10 @@ export function useHighlightFindMatches(
     }
 
     return () => {
+      if (scrollTimer) window.clearTimeout(scrollTimer)
       observer?.disconnect()
       CSS.highlights.delete(ALL_MATCHES_NAME)
       CSS.highlights.delete(ACTIVE_MATCH_NAME)
     }
-  }, [containerSelector, query, currentIndex, matchCase, wholeWord, currentMatch])
+  }, [containerSelector, query, currentIndex, matchCase, wholeWord, currentMatch, targetVerseKey])
 }
