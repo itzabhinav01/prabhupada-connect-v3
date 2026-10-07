@@ -20,7 +20,10 @@ async function bootstrap() {
   // session's mode (persisted separately) carries over as before.
   hydrateReadingMode(settings.focusModeDefault ? 'focus' : settings.readingMode)
   useReaderStore.setState({
+    showSanskrit: settings.showSanskrit ?? true,
     showTransliteration: settings.showTransliteration,
+    showSynonyms: settings.showSynonyms ?? true,
+    showPurport: settings.showPurport ?? true,
     showPronunciationGuide: settings.showPronunciationGuide,
     showBacklinks: settings.showBacklinks ?? false,
     focusModeDefault: settings.focusModeDefault,

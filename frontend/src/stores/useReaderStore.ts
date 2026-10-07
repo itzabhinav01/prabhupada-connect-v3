@@ -91,9 +91,24 @@ export const useReaderStore = create<ReaderState>((set, get) => ({
     set({ lineSpacing })
     debouncedSave('lineSpacing', lineSpacing)
   },
-  toggleSanskrit: () => set((s) => ({ showSanskrit: !s.showSanskrit })),
-  toggleSynonyms: () => set((s) => ({ showSynonyms: !s.showSynonyms })),
-  togglePurport: () => set((s) => ({ showPurport: !s.showPurport })),
+  toggleSanskrit: () =>
+    set((s) => {
+      const showSanskrit = !s.showSanskrit
+      debouncedSave('showSanskrit', showSanskrit)
+      return { showSanskrit }
+    }),
+  toggleSynonyms: () =>
+    set((s) => {
+      const showSynonyms = !s.showSynonyms
+      debouncedSave('showSynonyms', showSynonyms)
+      return { showSynonyms }
+    }),
+  togglePurport: () =>
+    set((s) => {
+      const showPurport = !s.showPurport
+      debouncedSave('showPurport', showPurport)
+      return { showPurport }
+    }),
   toggleTransliteration: () =>
     set((s) => {
       const showTransliteration = !s.showTransliteration

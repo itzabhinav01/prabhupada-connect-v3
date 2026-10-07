@@ -13,7 +13,10 @@ export interface PersistedSettings {
   readingWidth: ReadingWidth
   lineSpacing: LineSpacing
   readingMode: ReadingMode
+  showSanskrit: boolean
   showTransliteration: boolean
+  showSynonyms: boolean
+  showPurport: boolean
   showPronunciationGuide: boolean
   showBacklinks: boolean
   focusModeDefault: boolean
@@ -44,7 +47,10 @@ const DEFAULTS: PersistedSettings = {
   readingWidth: 'comfortable',
   lineSpacing: 'normal',
   readingMode: 'continuous',
+  showSanskrit: true,
   showTransliteration: true,
+  showSynonyms: true,
+  showPurport: true,
   showPronunciationGuide: true,
   showBacklinks: false,
   focusModeDefault: false,

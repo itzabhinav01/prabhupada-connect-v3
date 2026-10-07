@@ -169,6 +169,10 @@ export function Header() {
   const toggleSynonyms = useReaderStore((s) => s.toggleSynonyms)
   const showPurport = useReaderStore((s) => s.showPurport)
   const togglePurport = useReaderStore((s) => s.togglePurport)
+  const showPronunciationGuide = useReaderStore((s) => s.showPronunciationGuide)
+  const togglePronunciationGuide = useReaderStore((s) => s.togglePronunciationGuide)
+  const showBacklinks = useReaderStore((s) => s.showBacklinks)
+  const toggleBacklinks = useReaderStore((s) => s.toggleBacklinks)
 
   const setSearchOpen = useUIStore((s) => s.setSearchOpen)
   const openSearchTabForBook = useTabStore((s) => s.openSearchTabForBook)
@@ -371,7 +375,7 @@ export function Header() {
                 right: appearancePos.right,
                 zIndex: 9999,
               }}
-              className="w-72 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl p-3.5 space-y-3.5 text-xs"
+              className="w-80 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl p-3.5 space-y-3.5 text-xs"
             >
               {/* Font size row */}
               <div>
@@ -499,19 +503,32 @@ export function Header() {
                     },
                     { label: 'Synonyms', active: showSynonyms, onClick: toggleSynonyms },
                     { label: 'Purport', active: showPurport, onClick: togglePurport },
+                    {
+                      label: 'Sanskrit Meter',
+                      active: showPronunciationGuide,
+                      onClick: togglePronunciationGuide,
+                      title: 'Show Pronunciation & Recitation Guide (Sanskrit Meter)',
+                    },
+                    {
+                      label: 'Referencing Notes',
+                      active: showBacklinks,
+                      onClick: toggleBacklinks,
+                      title: 'Show Referencing Notes in Reader (Backlinks)',
+                    },
                   ].map((layer) => (
                     <button
                       key={layer.label}
                       type="button"
                       onClick={layer.onClick}
+                      title={layer.title}
                       className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-[11px] transition-colors ${
                         layer.active
                           ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
                           : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:text-neutral-300'
                       }`}
                     >
-                      <span>{layer.label}</span>
-                      {layer.active && <Check size={12} />}
+                      <span className="truncate mr-1">{layer.label}</span>
+                      {layer.active && <Check size={12} className="shrink-0" />}
                     </button>
                   ))}
                 </div>

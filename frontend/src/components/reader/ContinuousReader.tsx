@@ -11,9 +11,12 @@ export function ContinuousReader({ records }: { records: VerseRecord[] }) {
   const readingWidth = useReaderStore((s) => s.readingWidth)
   const fontSize = useReaderStore((s) => s.fontSize)
   const lineSpacing = useReaderStore((s) => s.lineSpacing)
+  const showSanskrit = useReaderStore((s) => s.showSanskrit)
   const showTransliteration = useReaderStore((s) => s.showTransliteration)
   const showSynonyms = useReaderStore((s) => s.showSynonyms)
   const showPurport = useReaderStore((s) => s.showPurport)
+  const showPronunciationGuide = useReaderStore((s) => s.showPronunciationGuide)
+  const showBacklinks = useReaderStore((s) => s.showBacklinks)
   const activeVerseId = useNavigationStore((s) => s.activeVerseId)
   const setActiveVerse = useNavigationStore((s) => s.setActiveVerse)
   const jumpToken = useNavigationStore((s) => s.jumpToken)
@@ -23,12 +26,14 @@ export function ContinuousReader({ records }: { records: VerseRecord[] }) {
     const r = records[index]
     if (!r) return 260
     let est = 45
-    if (r.devanagari) est += 65
+    if (showSanskrit && r.devanagari) est += 65
     if (showTransliteration && r.transliteration) est += 55
+    if (showPronunciationGuide && r.transliteration) est += 40
     if (showSynonyms && r.synonyms) est += Math.min(Math.round(r.synonyms.length * 0.22), 200)
     if (r.translation) est += Math.min(Math.round(r.translation.length * 0.32), 220)
     if (showPurport && r.purports) est += Math.min(Math.round(r.purports.length * 0.35), 3500)
     est += 45 // compact personal notes header
+    if (showBacklinks) est += 35
     return Math.max(est, 140)
   }
 
@@ -63,7 +68,7 @@ export function ContinuousReader({ records }: { records: VerseRecord[] }) {
   // Re-measure when active typography/toggle settings change
   useEffect(() => {
     virtualizer.measure()
-  }, [fontSize, readingWidth, lineSpacing, showTransliteration, showSynonyms, showPurport, virtualizer])
+  }, [fontSize, readingWidth, lineSpacing, showSanskrit, showTransliteration, showSynonyms, showPurport, showPronunciationGuide, showBacklinks, virtualizer])
 
   // Scroll restoration: jump to the current active verse whenever a new
   // chapter loads, an explicit "jump" is requested (breadcrumb click), or
