@@ -34,6 +34,8 @@ export interface PersistedSettings {
   supabaseAnonKey: string
   /** Minutes between automatic background syncs; `0` = manual only. */
   syncIntervalMinutes: number
+  /** Custom bookmark collection categories defined by the user even if currently empty */
+  customBookmarkCollections: string[]
   /** Sidebar book order the user dragged into place, as a list of
    * `bookKey`s (the virtual `'CC'` key included) — `[]` means "no override,
    * use the corpus's own canonical order." */
@@ -56,6 +58,7 @@ const DEFAULTS: PersistedSettings = {
   focusModeDefault: false,
   customPalette: DEFAULT_CUSTOM_PALETTE,
   highlightPalette: DEFAULT_HIGHLIGHT_PALETTE,
+  customBookmarkCollections: [],
   supabaseUrl: 'https://zaiovlzihmgoswzacgpj.supabase.co',
   supabaseAnonKey:
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphaW92bHppaG1nb3N3emFjZ3BqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyNzYyMTQsImV4cCI6MjEwNjg1MjIxNH0.JHHblI-WlDWjqa5Qpt-fRwDyDl4JW3_5hszeFe5YVf0',

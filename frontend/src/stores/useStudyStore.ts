@@ -33,6 +33,11 @@ interface StudyState {
   deleteNote: (id: number) => Promise<void>
   loadAllNotes: () => Promise<void>
 
+  customCollections: string[]
+  hydrateCustomCollections: (collections: string[]) => void
+  addCollection: (name: string) => Promise<void>
+  removeCollection: (name: string) => Promise<void>
+
   loadBookmarks: () => Promise<void>
   isBookmarked: (verseId: string) => boolean
   toggleBookmark: (verseId: string, bookTitle: string, verseRef: string) => Promise<void>
@@ -52,8 +57,38 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   notesByVerse: {},
   bookmarkedVerseIds: new Set(),
   bookmarks: [],
+  customCollections: [],
   allNotes: [],
   history: [],
+
+  hydrateCustomCollections: (collections: string[]) => {
+    set({ customCollections: collections })
+  },
+
+  addCollection: async (name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    const current = get().customCollections
+    if (!current.includes(trimmed)) {
+      const next = [...current, trimmed]
+      set({ customCollections: next })
+      await api.saveSetting('customBookmarkCollections', JSON.stringify(next))
+    }
+  },
+
+  removeCollection: async (name: string) => {
+    // 1. Clear tag on bookmarks in database and local state
+    await api.clearBookmarkCollection(name)
+    // 2. Remove from custom collections if present
+    const current = get().customCollections
+    const next = current.filter((c) => c !== name)
+    set((s) => ({
+      customCollections: next,
+      bookmarks: s.bookmarks.map((b) => (b.tag === name ? { ...b, tag: null } : b)),
+    }))
+    await api.saveSetting('customBookmarkCollections', JSON.stringify(next))
+    scheduleBackgroundSync()
+  },
 
   loadHighlightsForVerse: async (verseId: string) => {
     const highlights = await api.getHighlightsForVerse(verseId)
@@ -141,35 +176,76 @@ export const useStudyStore = create<StudyState>((set, get) => ({
 
   toggleBookmark: async (verseId, bookTitle, verseRef) => {
     const wasBookmarked = get().bookmarkedVerseIds.has(verseId)
+    // Instant optimistic UI update
     if (wasBookmarked) {
-      await api.removeBookmark(verseId)
       set((s) => {
         const next = new Set(s.bookmarkedVerseIds)
         next.delete(verseId)
         return { bookmarkedVerseIds: next, bookmarks: s.bookmarks.filter((b) => b.verseId !== verseId) }
       })
+      try {
+        await api.removeBookmark(verseId)
+      } catch (e) {
+        // Rollback on error
+        await get().loadBookmarks()
+        throw e
+      }
     } else {
-      const bookmark = await api.addBookmark({ verseId, bookTitle, verseRef, tag: null })
+      const now = new Date().toISOString()
+      const optimisticBookmark: Bookmark = {
+        id: -Date.now(),
+        verseId,
+        bookTitle,
+        verseRef,
+        tag: null,
+        createdAt: now,
+        updatedAt: now,
+        remoteId: null,
+        deletedAt: null,
+        remoteCollectionId: null,
+      }
       set((s) => ({
         bookmarkedVerseIds: new Set(s.bookmarkedVerseIds).add(verseId),
-        bookmarks: [bookmark, ...s.bookmarks.filter((b) => b.verseId !== verseId)],
+        bookmarks: [optimisticBookmark, ...s.bookmarks.filter((b) => b.verseId !== verseId)],
       }))
+      try {
+        const realBookmark = await api.addBookmark({ verseId, bookTitle, verseRef, tag: null })
+        set((s) => ({
+          bookmarks: s.bookmarks.map((b) => (b.verseId === verseId ? realBookmark : b)),
+        }))
+      } catch (e) {
+        // Rollback on error
+        await get().loadBookmarks()
+        throw e
+      }
     }
     scheduleBackgroundSync()
   },
 
   removeBookmarkById: async (verseId: string) => {
-    await api.removeBookmark(verseId)
     set((s) => {
       const next = new Set(s.bookmarkedVerseIds)
       next.delete(verseId)
       return { bookmarkedVerseIds: next, bookmarks: s.bookmarks.filter((b) => b.verseId !== verseId) }
     })
+    try {
+      await api.removeBookmark(verseId)
+    } catch (e) {
+      await get().loadBookmarks()
+      throw e
+    }
     scheduleBackgroundSync()
   },
 
   renameBookmarkCollection: async (oldTag, newTag) => {
+    const current = get().customCollections
+    const nextCustom = current.map((c) => (c === oldTag ? newTag : c))
+    set((s) => ({
+      customCollections: nextCustom,
+      bookmarks: s.bookmarks.map((b) => (b.tag === oldTag ? { ...b, tag: newTag } : b)),
+    }))
     await api.renameBookmarkCollection(oldTag, newTag)
+    await api.saveSetting('customBookmarkCollections', JSON.stringify(nextCustom))
     await get().loadBookmarks()
     scheduleBackgroundSync()
   },

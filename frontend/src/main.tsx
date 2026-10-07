@@ -8,6 +8,7 @@ import { hydrateCustomBookOrder, hydrateReadingMode } from './stores/useNavigati
 import { hydrateReaderSettings, useReaderStore } from './stores/useReaderStore'
 import { hydrateSyncSettings } from './stores/useSyncSettingsStore'
 import { hydrateTheme } from './stores/useThemeStore'
+import { useStudyStore } from './stores/useStudyStore'
 
 async function bootstrap() {
   // Applied to the DOM before the first paint so there is never a flash of
@@ -31,6 +32,7 @@ async function bootstrap() {
   hydrateHighlightPalette(settings.highlightPalette)
   hydrateSyncSettings(settings.supabaseUrl, settings.supabaseAnonKey, settings.syncIntervalMinutes)
   hydrateCustomBookOrder(settings.customBookOrder)
+  useStudyStore.getState().hydrateCustomCollections(settings.customBookmarkCollections ?? [])
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

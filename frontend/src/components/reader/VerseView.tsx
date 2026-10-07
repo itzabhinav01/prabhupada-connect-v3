@@ -99,9 +99,9 @@ export function VerseView({ record }: { record: VerseRecord }) {
             type="button"
             onClick={handleBookmarkToggle}
             title={bookmarked ? 'Remove bookmark' : 'Bookmark this verse'}
-            className={`flex items-center p-1.5 rounded-md border ${
+            className={`flex items-center p-1.5 rounded-md border transition-all active:scale-90 ${
               bookmarked
-                ? 'text-amber-400 border-amber-500/40 bg-amber-500/10'
+                ? 'text-amber-400 border-amber-500/50 bg-amber-500/20 shadow-sm shadow-amber-500/20'
                 : 'text-neutral-400 border-neutral-800 hover:bg-neutral-800 hover:text-neutral-200'
             }`}
           >

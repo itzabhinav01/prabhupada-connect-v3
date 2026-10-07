@@ -135,7 +135,7 @@ function BookmarkMenu({
           <button
             type="button"
             onClick={() => {
-              onMoveTo(currentTag)
+              onMoveTo(null)
               setOpen(false)
             }}
             className="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
@@ -160,10 +160,12 @@ function BookmarkMenu({
 
 export function BookmarksTab() {
   const bookmarks = useStudyStore((s) => s.bookmarks)
+  const customCollections = useStudyStore((s) => s.customCollections)
+  const addCollection = useStudyStore((s) => s.addCollection)
+  const removeCollection = useStudyStore((s) => s.removeCollection)
   const loadBookmarks = useStudyStore((s) => s.loadBookmarks)
   const removeBookmarkById = useStudyStore((s) => s.removeBookmarkById)
   const renameBookmarkCollection = useStudyStore((s) => s.renameBookmarkCollection)
-  const clearBookmarkCollection = useStudyStore((s) => s.clearBookmarkCollection)
   const moveBookmarkToCollection = useStudyStore((s) => s.moveBookmarkToCollection)
   const history = useStudyStore((s) => s.history)
   const loadHistory = useStudyStore((s) => s.loadHistory)
@@ -205,8 +207,9 @@ export function BookmarksTab() {
   const collections = useMemo(() => {
     const tags = new Set<string>()
     for (const b of bookmarks) if (b.tag) tags.add(b.tag)
+    for (const c of customCollections) tags.add(c)
     return [...tags].sort()
-  }, [bookmarks])
+  }, [bookmarks, customCollections])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -231,7 +234,7 @@ export function BookmarksTab() {
 
   const handleDialogConfirm = (name: string) => {
     if (dialog?.mode === 'new') {
-      setCollection(name)
+      void addCollection(name).then(() => setCollection(name))
     } else if (dialog?.mode === 'rename' && name !== dialog.current) {
       void renameBookmarkCollection(dialog.current, name).then(() => setCollection(name))
     }
@@ -240,8 +243,8 @@ export function BookmarksTab() {
 
   const handleDeleteCollection = () => {
     if (collection === 'all' || collection === UNCATEGORIZED) return
-    if (!window.confirm(`Delete collection "${collection}"? Bookmarks move to Uncategorized.`)) return
-    void clearBookmarkCollection(collection).then(() => setCollection('all'))
+    if (!window.confirm(`Delete collection category "${collection}"? Bookmarks will remain intact and move to Uncategorized.`)) return
+    void removeCollection(collection).then(() => setCollection('all'))
   }
 
   const lastRead = history[0]

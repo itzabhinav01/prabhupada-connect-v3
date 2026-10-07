@@ -587,15 +587,15 @@ export function Header() {
                 activeRecord.reference ?? activeRecord.recordKey,
               )
             }
-            className={`p-1.5 rounded-md transition-colors ${
+            className={`p-1.5 rounded-md transition-all active:scale-90 ${
               isBookmarked(activeRecord.recordKey)
-                ? 'bg-amber-500/15 text-amber-400'
+                ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40'
                 : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
             }`}
             title="Toggle bookmark for this verse (Ctrl+Shift+B)"
           >
             {isBookmarked(activeRecord.recordKey) ? (
-              <BookmarkCheck size={15} />
+              <BookmarkCheck size={15} className="fill-amber-400/20" />
             ) : (
               <Bookmark size={15} />
             )}
