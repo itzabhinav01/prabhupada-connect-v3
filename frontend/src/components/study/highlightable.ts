@@ -134,31 +134,189 @@ interface LocalHighlight extends Highlight {
   localEnd: number
 }
 
+/** Finds the occurrence of needle within haystack whose index is closest to targetOffset. */
+export function findClosestMatch(haystack: string, needle: string, targetOffset: number): number {
+  if (!needle || !haystack) return -1
+  let bestIdx = -1
+  let bestDist = Infinity
+  let pos = 0
+  while ((pos = haystack.indexOf(needle, pos)) !== -1) {
+    const dist = Math.abs(pos - targetOffset)
+    if (dist < bestDist) {
+      bestDist = dist
+      bestIdx = pos
+    }
+    pos += 1
+  }
+  return bestIdx
+}
+
 /** Highlights (from the full verse-wide list) that overlap this segment,
- * with offsets translated to be local to the segment's own text. */
+ * with offsets translated to be local to the segment's own text.
+ * Content-anchoring automatically verifies and recovers from any historical
+ * or header-shift offset discrepancies using `selectedText`. */
 export function highlightsForSegment(highlights: Highlight[], segment: TextSegment): LocalHighlight[] {
   return highlights
-    .map((h) => ({
-      ...h,
-      localStart: Math.max(0, h.textRangeStart - segment.start),
-      localEnd: Math.min(segment.text.length, h.textRangeEnd - segment.start),
-    }))
-    .filter((h) => h.localStart < h.localEnd)
+    .map((h) => {
+      // 1. Calculate raw local offset from stored global offset
+      let localStart = h.textRangeStart - segment.start
+      let localEnd = h.textRangeEnd - segment.start
+
+      // 2. If selectedText is available, verify or repair with content anchoring
+      const rawText = h.selectedText?.trim()
+      if (rawText && rawText.length > 0) {
+        // If the highlight explicitly tagged a field that belongs to another section, exclude it
+        if (h.field) {
+          const fieldLower = h.field.toLowerCase()
+          const isPurportField = fieldLower === 'purport'
+          const isPurportSeg = segment.key.startsWith('purport')
+          if (isPurportField && !isPurportSeg) return null
+          if (!isPurportField && isPurportSeg) return null
+          if (fieldLower === 'translation' && segment.key !== 'translation' && !segment.key.endsWith('-translation')) return null
+          if (fieldLower === 'synonyms' && segment.key !== 'synonyms' && !segment.key.endsWith('-synonyms')) return null
+        }
+
+        // Check if current slice matches the selected text
+        const currentSlice = segment.text.slice(Math.max(0, localStart), Math.min(segment.text.length, localEnd)).trim()
+        if (currentSlice !== rawText && currentSlice !== h.selectedText) {
+          // Offsets do not match selectedText (e.g. legacy header-offset shift or zoom drift).
+          // Search for rawText in segment.text anchored closest to localStart!
+          const matchIdx = findClosestMatch(segment.text, rawText, Math.max(0, localStart))
+          if (matchIdx !== -1) {
+            localStart = matchIdx
+            localEnd = matchIdx + rawText.length
+          } else {
+            // Also try untrimmed text
+            const untrimmedIdx = findClosestMatch(segment.text, h.selectedText, Math.max(0, localStart))
+            if (untrimmedIdx !== -1) {
+              localStart = untrimmedIdx
+              localEnd = untrimmedIdx + h.selectedText.length
+            } else {
+              // Highlight text does not occur in this segment at all.
+              // If field was specified or this is a single-segment highlight, exclude it from this segment.
+              if (h.field || h.textRangeEnd - h.textRangeStart <= rawText.length + 10) {
+                return null
+              }
+            }
+          }
+        }
+      }
+
+      return {
+        ...h,
+        localStart: Math.max(0, localStart),
+        localEnd: Math.min(segment.text.length, localEnd),
+      }
+    })
+    .filter((h): h is LocalHighlight => h !== null && h.localStart < h.localEnd && h.localStart < segment.text.length && h.localEnd > 0)
     .sort((a, b) => a.localStart - b.localStart)
 }
 
 /** Walks a highlight-root element's text nodes to turn the current DOM
- * selection into canonical-text character offsets. Returns null if there is
- * no selection, it's collapsed, or it falls outside `rootEl`. */
+ * selection into canonical-text character offsets. Scoped strictly to
+ * segment containers so that section headers ('Synonyms', 'Translation',
+ * 'Purport', etc.) NEVER skew or shift the character offsets. */
 export function captureSelectionRange(
   rootEl: HTMLElement,
-): { start: number; end: number; text: string } | null {
+  segments?: TextSegment[],
+): { start: number; end: number; text: string; field: string | null } | null {
   const selection = window.getSelection()
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null
   const range = selection.getRangeAt(0)
   if (!rootEl.contains(range.commonAncestorContainer)) return null
 
-  const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT)
+  const selectedText = selection.toString()
+  if (!selectedText.trim()) return null
+
+  // If segments are provided, scope strictly to the segment DOM elements (data-segment-key)
+  if (segments && segments.length > 0) {
+    const startEl = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement
+    const endEl = range.endContainer instanceof Element ? range.endContainer : range.endContainer.parentElement
+    const startSegEl = startEl?.closest('[data-segment-key]') as HTMLElement | null
+    const endSegEl = endEl?.closest('[data-segment-key]') as HTMLElement | null
+
+    if (startSegEl && rootEl.contains(startSegEl)) {
+      const startKey = startSegEl.getAttribute('data-segment-key')
+      const endKey = endSegEl?.getAttribute('data-segment-key') ?? startKey
+      const startSeg = segments.find((s) => s.key === startKey)
+      const endSeg = segments.find((s) => s.key === endKey) ?? startSeg
+
+      if (startSeg) {
+        // Measure local start offset strictly inside startSegEl
+        const walkerStart = document.createTreeWalker(startSegEl, NodeFilter.SHOW_TEXT)
+        let charIndexStart = 0
+        let localStart = -1
+        let node: Node | null
+        while ((node = walkerStart.nextNode())) {
+          if (node === range.startContainer) {
+            localStart = charIndexStart + range.startOffset
+            break
+          }
+          charIndexStart += node.textContent?.length ?? 0
+        }
+
+        // Measure local end offset strictly inside endContainerEl
+        const endContainerEl = endSegEl ?? startSegEl
+        const walkerEnd = document.createTreeWalker(endContainerEl, NodeFilter.SHOW_TEXT)
+        let charIndexEnd = 0
+        let localEnd = -1
+        while ((node = walkerEnd.nextNode())) {
+          if (node === range.endContainer) {
+            localEnd = charIndexEnd + range.endOffset
+            break
+          }
+          charIndexEnd += node.textContent?.length ?? 0
+        }
+
+        if (localStart === -1) localStart = 0
+        if (localEnd === -1) localEnd = (endSeg ?? startSeg).text.length
+
+        let canonicalStart = startSeg.start + localStart
+        let canonicalEnd = (endSeg ?? startSeg).start + localEnd
+
+        // Verify and align against segment text when selection is within a single segment
+        if (startSeg === endSeg) {
+          const rawLen = selectedText.length
+          const expected = startSeg.text.slice(localStart, localStart + rawLen)
+          if (expected !== selectedText) {
+            const idx = findClosestMatch(startSeg.text, selectedText.trim(), localStart)
+            if (idx !== -1) {
+              localStart = idx
+              localEnd = idx + selectedText.trim().length
+              canonicalStart = startSeg.start + localStart
+              canonicalEnd = startSeg.start + localEnd
+            }
+          }
+        }
+
+        const field = startKey?.startsWith('purport')
+          ? 'purport'
+          : startKey?.startsWith('stanza')
+            ? 'stanza'
+            : startKey?.startsWith('song')
+              ? 'song'
+              : startKey ?? null
+
+        return {
+          start: Math.min(canonicalStart, canonicalEnd),
+          end: Math.max(canonicalStart, canonicalEnd),
+          text: selectedText,
+          field,
+        }
+      }
+    }
+  }
+
+  // Fallback: tree-walk rootEl while explicitly skipping all section header elements
+  const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => {
+      const parent = n.parentElement
+      if (parent && parent.closest('.scripture-section-header')) {
+        return NodeFilter.FILTER_REJECT
+      }
+      return NodeFilter.FILTER_ACCEPT
+    },
+  })
   let charIndex = 0
   let start = -1
   let end = -1
@@ -171,7 +329,5 @@ export function captureSelectionRange(
   }
   if (start === -1 || end === -1) return null
 
-  const text = selection.toString()
-  if (!text.trim()) return null
-  return { start: Math.min(start, end), end: Math.max(start, end), text }
+  return { start: Math.min(start, end), end: Math.max(start, end), text: selectedText, field: null }
 }

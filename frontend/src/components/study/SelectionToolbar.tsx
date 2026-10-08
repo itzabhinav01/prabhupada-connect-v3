@@ -2,25 +2,28 @@ import { type RefObject, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BookOpen, Copy, StickyNote } from 'lucide-react'
 
-import { captureSelectionRange } from './highlightable'
+import { captureSelectionRange, type TextSegment } from './highlightable'
 import { useHighlightPaletteStore } from '../../stores/useHighlightPaletteStore'
 
 interface PendingSelection {
   start: number
   end: number
   text: string
+  field: string | null
 }
 
 export function SelectionToolbar({
   containerRef,
+  segments,
   citationLabel,
   onHighlight,
   onAddNote,
   onLookup,
 }: {
   containerRef: RefObject<HTMLElement | null>
+  segments?: TextSegment[]
   citationLabel: string
-  onHighlight: (color: string, start: number, end: number, text: string) => void
+  onHighlight: (color: string, start: number, end: number, text: string, field: string | null) => void
   onAddNote: () => void
   onLookup: (word: string) => void
 }) {
@@ -34,7 +37,7 @@ export function SelectionToolbar({
       const root = containerRef.current
       if (!root) return
       requestAnimationFrame(() => {
-        const captured = captureSelectionRange(root)
+        const captured = captureSelectionRange(root, segments)
         if (!captured) {
           setPos(null)
           setPending(null)
@@ -49,7 +52,7 @@ export function SelectionToolbar({
     }
     document.addEventListener('mouseup', handleMouseUp)
     return () => document.removeEventListener('mouseup', handleMouseUp)
-  }, [containerRef])
+  }, [containerRef, segments])
 
   useEffect(() => {
     if (!pos) return
@@ -82,7 +85,7 @@ export function SelectionToolbar({
   }
 
   const handleColor = (color: string) => {
-    onHighlight(color, pending.start, pending.end, pending.text)
+    onHighlight(color, pending.start, pending.end, pending.text, pending.field)
     window.getSelection()?.removeAllRanges()
     dismiss()
   }

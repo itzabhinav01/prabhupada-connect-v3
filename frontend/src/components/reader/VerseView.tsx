@@ -83,14 +83,17 @@ export function VerseView({
     setActivePopover({ highlight, anchor: anchorEl })
   }
 
-  const handleAddHighlight = (color: string, start: number, end: number, text: string) => {
-    // Independent of `SelectionToolbar`'s own offset math — just reads
-    // which `data-field` wrapper the live selection anchor sits inside, so
-    // this can't disturb the (already-correct) highlight range logic.
-    const anchorNode = window.getSelection()?.anchorNode ?? null
-    const anchorEl = anchorNode instanceof Element ? anchorNode : anchorNode?.parentElement ?? null
-    const field = anchorEl?.closest('[data-field]')?.getAttribute('data-field') ?? null
-    void addHighlight(record.recordKey, color, start, end, text, field)
+  const handleAddHighlight = (color: string, start: number, end: number, text: string, field: string | null) => {
+    const resolvedField =
+      field ??
+      (window.getSelection()?.anchorNode instanceof Element
+        ? (window.getSelection()?.anchorNode as Element)
+        : window.getSelection()?.anchorNode?.parentElement
+      )
+        ?.closest('[data-field]')
+        ?.getAttribute('data-field') ??
+      null
+    void addHighlight(record.recordKey, color, start, end, text, resolvedField)
   }
 
   const handleBookmarkToggle = () => {
@@ -195,6 +198,7 @@ export function VerseView({
                 <div
                   key={s.key}
                   data-field="song-intro"
+                  data-segment-key={s.key}
                   className="leading-relaxed text-neutral-300 italic bg-neutral-900/40 border border-neutral-800/70 rounded-lg px-4 py-3 whitespace-pre-line"
                   style={{ fontSize: 'var(--font-size-purport)' }}
                 >
@@ -235,6 +239,7 @@ export function VerseView({
                   {showTransliteration && linesSeg && (
                     <div
                       data-field={`stanza-${idx}-lines`}
+                      data-segment-key={linesSeg.key}
                       className="whitespace-pre-line break-words mb-4 italic leading-[1.9] text-center"
                       style={{ color: 'var(--text-primary)', fontSize: 'var(--font-size-translit)' }}
                     >
@@ -248,6 +253,7 @@ export function VerseView({
                       <div data-field={`stanza-${idx}-synonyms`} className="mb-4">
                         <div className="scripture-section-header">Word-for-Word</div>
                         <p
+                          data-segment-key={synSeg.key}
                           className="leading-relaxed text-neutral-400 break-words"
                           style={{ fontSize: 'var(--font-size-synonyms)' }}
                         >
@@ -262,6 +268,7 @@ export function VerseView({
                   {showTranslation && transSeg && (
                     <div data-field={`stanza-${idx}-translation`}>
                       <blockquote
+                        data-segment-key={transSeg.key}
                         className="border-l-2 border-amber-500/70 pl-4 py-1 leading-relaxed font-medium break-words whitespace-pre-line"
                         style={{ color: 'var(--text-primary)', fontSize: 'var(--font-size-translation)' }}
                       >
@@ -279,6 +286,7 @@ export function VerseView({
                 <div
                   key={s.key}
                   data-field="song-notes"
+                  data-segment-key={s.key}
                   className="pt-3 border-t border-neutral-800/60 text-neutral-400 italic whitespace-pre-line"
                   style={{ fontSize: 'var(--font-size-synonyms)' }}
                 >
@@ -297,6 +305,7 @@ export function VerseView({
                     <div key={s.key} data-field="synonyms">
                       <div className="scripture-section-header">Synonyms</div>
                       <p
+                        data-segment-key={s.key}
                         className="mb-5 leading-relaxed text-neutral-400 break-words"
                         style={{ fontSize: 'var(--font-size-synonyms)' }}
                       >
@@ -315,6 +324,7 @@ export function VerseView({
                   <div key={s.key} data-field="translation">
                     <div className="scripture-section-header">Translation</div>
                     <blockquote
+                      data-segment-key={s.key}
                       className="mb-5 border-l-2 border-amber-500/70 pl-4 py-1 leading-relaxed font-medium break-words"
                       style={{ color: 'var(--text-primary)', fontSize: 'var(--font-size-translation)' }}
                     >
@@ -343,34 +353,34 @@ export function VerseView({
 
                       if (classification.kind === 'scripture-marker') {
                         return (
-                          <div key={s.key} className="scripture-section-header mt-6 mb-2">
+                          <div key={s.key} data-segment-key={s.key} className="scripture-section-header mt-6 mb-2">
                             {classification.label}
                           </div>
                         )
                       }
                       if (classification.kind === 'verse') {
                         return (
-                          <p key={s.key} className="purport-verse">
+                          <p key={s.key} data-segment-key={s.key} className="purport-verse">
                             {rendered}
                           </p>
                         )
                       }
                       if (classification.kind === 'subheading') {
                         return (
-                          <p key={s.key} className="prose-subheading">
+                          <p key={s.key} data-segment-key={s.key} className="prose-subheading">
                             {rendered}
                           </p>
                         )
                       }
                       if (classification.kind === 'dialogue') {
                         return (
-                          <p key={s.key} className="mb-4 last:mb-0">
+                          <p key={s.key} data-segment-key={s.key} className="mb-4 last:mb-0">
                             {renderParagraphWithSpeaker(s, classification.speakerEnd, highlights, handleHighlightClick)}
                           </p>
                         )
                       }
                       return (
-                        <p key={s.key} className="mb-4 last:mb-0">
+                        <p key={s.key} data-segment-key={s.key} className="mb-4 last:mb-0">
                           {rendered}
                         </p>
                       )
@@ -386,6 +396,7 @@ export function VerseView({
 
       <SelectionToolbar
         containerRef={highlightRootRef}
+        segments={segments}
         citationLabel={citationLabel}
         onHighlight={handleAddHighlight}
         onAddNote={() => openNotesDrawerForVerse(record.recordKey)}
