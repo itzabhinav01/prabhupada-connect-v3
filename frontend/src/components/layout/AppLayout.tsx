@@ -326,6 +326,10 @@ export function AppLayout() {
   useGlobalKeyboardShortcuts()
   useAutoSync()
 
+  useEffect(() => {
+    void useStudyStore.getState().loadBookmarks()
+  }, [])
+
   return (
     <div className="flex h-screen w-screen bg-neutral-950 text-neutral-100 overflow-hidden">
       {!zenMode && <Sidebar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((c) => !c)} />}

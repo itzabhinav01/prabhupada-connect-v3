@@ -2729,7 +2729,7 @@ checksum = "439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391"
 
 [[package]]
 name = "prabhupadaconnectv3"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "fancy-regex",
  "once_cell",

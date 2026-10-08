@@ -35,7 +35,7 @@ export function TabContentRouter({ tab }: { tab: Tab }) {
       return <BrowserTab initialUrl={(tab.payload as BrowserTabPayload).url} />
     case 'pdf': {
       const p = tab.payload as PdfTabPayload
-      return <PdfTab title={p.title} pdfPath={p.pdfPath} />
+      return <PdfTab title={p.title} pdfPath={p.pdfPath} tabId={tab.id} />
     }
     default:
       return null

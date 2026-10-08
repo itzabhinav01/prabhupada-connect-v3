@@ -42,8 +42,8 @@ export function VerseView({
   const loadHighlightsForVerse = useStudyStore((s) => s.loadHighlightsForVerse)
   const addHighlight = useStudyStore((s) => s.addHighlight)
   const removeHighlight = useStudyStore((s) => s.removeHighlight)
-  const isBookmarked = useStudyStore((s) => s.isBookmarked)
   const toggleBookmark = useStudyStore((s) => s.toggleBookmark)
+  const bookmarked = useStudyStore((s) => (record?.recordKey ? s.bookmarkedVerseIds?.has(record.recordKey) ?? false : false))
 
   const highlightRootRef = useRef<HTMLDivElement>(null)
   const [activePopover, setActivePopover] = useState<{ highlight: Highlight; anchor: HTMLElement } | null>(null)
@@ -51,7 +51,6 @@ export function VerseView({
   const highlights = highlightsByVerse[record.recordKey] ?? []
   const song = useMemo(() => parseSongPayload(record.purports), [record.purports])
   const segments = useMemo(() => buildHighlightSegments(record), [record])
-  const bookmarked = isBookmarked(record.recordKey)
   const citationLabel = record.reference ? `${selectedBook?.abbreviation ?? record.bookKey} ${record.reference.replace(/^\S+\s*/, '')}` : record.recordKey
   const meterAnalysis = useMemo(
     () => (!song && record.transliteration ? analyzeMeter(record.transliteration) : null),

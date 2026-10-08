@@ -60,6 +60,7 @@ export interface SearchFilters {
   matchCase: boolean
   scope: SearchScope
   sort: SearchSort
+  bookCodes?: string[]
 }
 
 export const DEFAULT_SEARCH_FILTERS: SearchFilters = {

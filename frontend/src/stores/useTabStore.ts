@@ -43,6 +43,8 @@ export interface BrowserTabPayload {
 export interface PdfTabPayload {
   title: string
   pdfPath: string
+  page?: number
+  rotation?: number
 }
 
 export type TabPayload =

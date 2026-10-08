@@ -103,20 +103,48 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_vb_reading_history_user_timestamp ON public.vb_reading_history (user_id, "timestamp");
 `
 
-const AI_CONVERSION_PROMPT = `You are a book converter for Prabhupāda Connect VedaBase. Convert the following text into a JSON array of scripture records.
+const AI_CONVERSION_PROMPT = `You are the interactive Scripture & Spiritual Book Digitization Assistant for Prabhupāda Connect VedaBase.
 
-Each record must have these fields:
+When the user gives you this prompt, DO NOT immediately output random JSON. Instead, first warmly greet the user and ask these 5 essential onboarding questions to configure the ingestion:
+
+1. 📖 Book Title & Author: What is the full title of the spiritual book, and who is the author?
+2. 📄 Source Document Format: What format will you upload or paste? (PDF, Microsoft Word .docx, RTF, plain text .txt, or EPUB).
+3. 📜 Book Structure: Is this a verse scripture (with Sanskrit/Bengali text, IAST Roman transliteration with diacritics, word-for-word synonyms, translation, and purports/commentaries) OR a prose narrative book (chapters, essays, lectures, dialogues)?
+4. 🔢 Chapter & Verse Numbering: How would you like the chapters and verses keyed? (e.g. standard Chapter 1, 2, 3 or custom prefixes).
+5. 📚 Library Section: Is this a work by Śrīla Prabhupāda, or should it be placed in the dedicated 'Works by Other Ācāryas & Authors' section of VedaBase Modern?
+
+Once the user answers your questions and uploads/pastes their source text (or chapters), convert the content into the exact VedaBase Modern import JSON schema below:
+
 {
-  "BookKey": "MYBOOK",         // Short unique identifier e.g. "TQK", "SSR"
-  "RecordKey": "MYBOOK-1",     // Unique key per record: BookKey + sequential number
-  "Reference": "MYBOOK 1: Title of Chapter",
-  "Title": "Chapter or verse title",
-  "Synonyms": null,            // Sanskrit word-for-word if applicable, else null
-  "Translation": null,         // English translation if applicable, else null
-  "Purport": "Full text of this record"
+  "bookKey": "SHORT_UNIQUE_KEY_UPPERCASE",
+  "abbreviation": "Short Abbr",
+  "edition": "Standard",
+  "title": "Full Book Title",
+  "author": "Full Revered Author Name",
+  "category": "Other Ācāryas",
+  "records": [
+    {
+      "recordKey": "BOOKKEY-1-1",
+      "reference": "Book Abbr 1.1",
+      "sequence": 1,
+      "recordType": "Verse",
+      "referenceStatus": "Valid",
+      "title": "Optional Chapter or Verse Title",
+      "devanagari": "Sanskrit or Bengali text in Unicode (optional, omit/null if English prose)",
+      "transliteration": "Unicode IAST Roman transliteration with diacritics (e.g. kṛṣṇa)",
+      "synonyms": "word1—meaning1; word2—meaning2.",
+      "translation": "English translation or main paragraph.",
+      "purports": "Commentary, purport, or continuous discourse paragraphs."
+    }
+  ]
 }
 
-Output ONLY the JSON array. No markdown, no explanation. Begin the array with [ and end with ].`
+Formatting & Ingestion Rules for the AI:
+1. Multi-Author Categorization: If the author is someone other than Śrīla Prabhupāda, set 'category' to 'Other Ācāryas' (or 'Works by Other Ācāryas & Authors') and set 'author' to their full revered name.
+2. Dialogue Speaker Names: If the text contains conversations or dialogues (e.g. 'Devotee:', 'Prabhupāda:', 'Bob:', 'Dr. Patel:'), format the speaker followed by a colon. VedaBase Modern automatically identifies and bolds speaker names in the reader.
+3. For prose books without verses, leave 'devanagari', 'transliteration', and 'synonyms' null or empty strings, and place the main content into 'translation' or 'purports'.
+4. Ensure valid JSON escaping (properly escape quotes \" and newlines \n in Sanskrit, Bengali, and English text).
+5. Provide the output as a downloadable or copyable JSON file ready for the in-app 'Import Book from JSON...' button.`
 
 interface Section {
   id: string
@@ -391,12 +419,12 @@ export function HelpTab() {
         body: (
           <div className="space-y-2 text-sm text-neutral-300">
             <p>
-              In <strong className="text-neutral-100">Settings → Corpus Management</strong>, you can import both structured text books (JSON archives) and original PDF book scans (like <em>Brs Subhodini</em>).
+              In <strong className="text-neutral-100">Settings → Corpus Management</strong>, you can import both structured text books (JSON archives) and original PDF book scans.
             </p>
             <p>
               When importing a PDF, the app safely copies it to your local application data directory so it remains permanently available offline inside the high-performance in-app PDF reader.
             </p>
-            <p>To convert any plain-text or PDF book into a structured JSON archive with an AI assistant, use this prompt:</p>
+            <p>To convert any plain-text or PDF book into a structured JSON archive using an AI assistant (such as ChatGPT, Claude, or Gemini), copy and send the prompt below to your AI assistant along with your source text:</p>
             <CopyBlock text={AI_CONVERSION_PROMPT} />
           </div>
         ),
@@ -503,6 +531,16 @@ export function HelpTab() {
       return next
     })
 
+  const handleCategoryClick = (c: string) => {
+    if (activeCategory === c) {
+      setActiveCategory(null)
+    } else {
+      setActiveCategory(c)
+      const catSectionIds = sections.filter((s) => s.category === c).map((s) => s.id)
+      setOpenSections((prev) => new Set([...prev, ...catSectionIds]))
+    }
+  }
+
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin">
       <div className="max-w-3xl mx-auto px-8 py-10">
@@ -550,7 +588,7 @@ export function HelpTab() {
             <button
               key={c}
               type="button"
-              onClick={() => setActiveCategory(c === activeCategory ? null : c)}
+              onClick={() => handleCategoryClick(c)}
               className={`shrink-0 text-xs px-2 py-1 rounded-full whitespace-nowrap ${
                 activeCategory === c ? 'bg-amber-500/20 text-amber-300' : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-800'
               }`}

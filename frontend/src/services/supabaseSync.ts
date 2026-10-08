@@ -713,12 +713,16 @@ export async function pullAll(creds: SupabaseCredentials): Promise<PullResult> {
 
   let bookmarkQuery = supabase
     .from('vb_bookmarks')
-    .select('id, record_key, title, collection_id')
+    .select('id, record_key, title, collection_id, updated_at')
     .eq('user_id', userId)
     .is('deleted_at', null)
   if (sinceUtc) bookmarkQuery = bookmarkQuery.gt('updated_at', sinceUtc)
   const { data: remoteBookmarks, error: bErr } = await bookmarkQuery
   if (bErr) errors.push(`vb_bookmarks: ${bErr.message}`)
+
+  // Get local bookmarks including tombstones to ensure deleted bookmarks are not resurrected
+  const localBookmarks = await getBookmarksForSync()
+  const localBookmarkByVerse = new Map(localBookmarks.map((b) => [b.verseId, b]))
 
   // Same dedup-and-fetch-concurrently fix as the highlight loop above.
   const bookmarkKeys = [...new Set((remoteBookmarks ?? []).map((r) => r.record_key))]
@@ -728,6 +732,14 @@ export async function pullAll(creds: SupabaseCredentials): Promise<PullResult> {
 
   for (const row of remoteBookmarks ?? []) {
     try {
+      const local = localBookmarkByVerse.get(row.record_key)
+      if (local?.deletedAt) {
+        // If locally deleted, do NOT resurrect unless remote updated_at is newer than local deletion
+        if (!row.updated_at || new Date(row.updated_at) <= new Date(local.deletedAt)) {
+          continue
+        }
+      }
+
       const verse = bookmarkRecordCache.get(row.record_key) ?? null
       const book = useNavigationStore.getState().books.find((b) => b.bookKey === verse?.bookKey)
       const tag = (row.collection_id ? collectionNameById.get(row.collection_id) : null) ?? row.title ?? null
@@ -787,12 +799,12 @@ async function refreshLocalStudyStoreAfterSync() {
   ])
 }
 
-/** "Sync Now" runs both directions: pull first (so remote-only rows from
- * other devices land locally), then push (so local-only rows and any
- * edits made here reach Supabase) — matching the bidirectional contract. */
+/** "Sync Now" runs both directions: push first (so local deletions, tombstones,
+ * and edits reach Supabase immediately), then pull (so remote-only rows from
+ * other devices land locally without reviving deleted rows). */
 export async function syncNow(creds: SupabaseCredentials): Promise<{ pull: PullResult; push: SyncResult }> {
-  const pull = await pullAll(creds)
   const push = await pushAll(creds)
+  const pull = await pullAll(creds)
   await refreshLocalStudyStoreAfterSync().catch(() => {})
   return { pull, push }
 }

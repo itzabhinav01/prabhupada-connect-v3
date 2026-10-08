@@ -181,7 +181,7 @@ export function Header() {
   const toggleZenMode = useThemeStore((s) => s.toggleZenMode)
 
   const loadBookmarks = useStudyStore((s) => s.loadBookmarks)
-  const isBookmarked = useStudyStore((s) => s.isBookmarked)
+  const isCurrentBookmarked = useStudyStore((s) => (activeVerseId ? s.bookmarkedVerseIds?.has(activeVerseId) ?? false : false))
   const toggleBookmark = useStudyStore((s) => s.toggleBookmark)
 
   const splitMode = useSplitViewStore((s) => s.mode)
@@ -591,13 +591,13 @@ export function Header() {
               )
             }
             className={`p-1.5 rounded-md transition-all active:scale-90 ${
-              isBookmarked(activeRecord.recordKey)
+              isCurrentBookmarked
                 ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40'
                 : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
             }`}
             title="Toggle bookmark for this verse (Ctrl+Shift+B)"
           >
-            {isBookmarked(activeRecord.recordKey) ? (
+            {isCurrentBookmarked ? (
               <BookmarkCheck size={15} className="fill-amber-400/20" />
             ) : (
               <Bookmark size={15} />

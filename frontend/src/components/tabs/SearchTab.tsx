@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Bookmark, Highlighter, Loader2, Search, StickyNote, X, Zap } from 'lucide-react'
+import { Bookmark, ChevronDown, Highlighter, Loader2, Search, StickyNote, X, Zap } from 'lucide-react'
 
 import { searchCorpus, searchImportedBooks, unifiedSearch } from '../../services/api'
 import { resolveDirectReference, type SearchFilters, type SearchScope, type SearchSort, type SearchSource } from '../../services/directReference'
@@ -88,6 +88,152 @@ function ResultCard({
   )
 }
 
+function BookMultiSelectDropdown({
+  books,
+  selectedKeys,
+  onChange,
+}: {
+  books: { bookKey: string; title: string | null; abbreviation?: string | null }[]
+  selectedKeys?: string[]
+  onChange: (keys: string[] | undefined) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [filterText, setFilterText] = useState('')
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  const allBookKeys = useMemo(() => books.map((b) => b.bookKey), [books])
+  const isAllSelected = !selectedKeys || selectedKeys.length === 0 || selectedKeys.length === allBookKeys.length
+
+  const filteredBooks = useMemo(() => {
+    if (!filterText.trim()) return books
+    const q = filterText.toLowerCase()
+    return books.filter((b) => (b.title ?? b.bookKey).toLowerCase().includes(q) || b.bookKey.toLowerCase().includes(q))
+  }, [books, filterText])
+
+  const buttonLabel = useMemo(() => {
+    if (isAllSelected) return `All Books (${books.length})`
+    if (selectedKeys.length === 0) return 'No Books Selected'
+    if (selectedKeys.length === 1) {
+      const book = books.find((b) => b.bookKey === selectedKeys[0])
+      return book?.title ?? selectedKeys[0]
+    }
+    return `${selectedKeys.length} Books Selected`
+  }, [isAllSelected, selectedKeys, books])
+
+  const toggleBook = (key: string) => {
+    const current = isAllSelected ? [...allBookKeys] : [...(selectedKeys ?? [])]
+    const exists = current.includes(key)
+    const next = exists ? current.filter((k) => k !== key) : [...current, key]
+    if (next.length === allBookKeys.length) {
+      onChange(undefined)
+    } else {
+      onChange(next)
+    }
+  }
+
+  const selectAll = () => {
+    onChange(undefined)
+  }
+
+  const clearAll = () => {
+    onChange([])
+  }
+
+  const selectScripturesOnly = () => {
+    const scriptureKeys = ['BG', 'SB', 'CC'].filter((k) => allBookKeys.includes(k))
+    onChange(scriptureKeys)
+  }
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-md px-2.5 py-1.5 text-xs text-neutral-300 max-w-[200px]"
+        title="Filter by books (Select all, clear, or pick multiple books)"
+      >
+        <span className="truncate">{buttonLabel}</span>
+        <ChevronDown size={13} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-72 bg-neutral-900 border border-neutral-700 rounded-lg shadow-2xl z-50 flex flex-col p-2 gap-2 text-xs">
+          {/* Action buttons */}
+          <div className="flex items-center gap-1 pb-1.5 border-b border-neutral-800">
+            <button
+              type="button"
+              onClick={selectAll}
+              className="px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-[11px]"
+            >
+              Select All
+            </button>
+            <button
+              type="button"
+              onClick={clearAll}
+              className="px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-neutral-200 text-[11px]"
+            >
+              Clear All
+            </button>
+            <button
+              type="button"
+              onClick={selectScripturesOnly}
+              className="px-2 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-[11px]"
+            >
+              Scriptures Only
+            </button>
+          </div>
+
+          {/* Quick search input */}
+          <div className="relative">
+            <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500" />
+            <input
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              placeholder="Filter books…"
+              className="w-full bg-neutral-950 border border-neutral-800 rounded px-2 pl-6 py-1 text-xs text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/50"
+            />
+          </div>
+
+          {/* Checkbox list */}
+          <div className="max-h-60 overflow-y-auto scrollbar-thin flex flex-col gap-0.5">
+            {filteredBooks.map((b) => {
+              const checked = isAllSelected || (selectedKeys?.includes(b.bookKey) ?? false)
+              return (
+                <label
+                  key={b.bookKey}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-neutral-800 cursor-pointer text-neutral-300 select-none"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleBook(b.bookKey)}
+                    className="accent-amber-500 rounded"
+                  />
+                  <span className="truncate">{b.title ?? b.bookKey}</span>
+                </label>
+              )
+            })}
+            {filteredBooks.length === 0 && (
+              <span className="text-neutral-600 px-2 py-2 text-center">No matching books</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function SearchTab({ tabId }: { tabId: string }) {
   const payload = useTabStore((s) => s.tabs.find((t) => t.id === tabId)?.payload) as SearchTabPayload | undefined
   const updateTabPayload = useTabStore((s) => s.updateTabPayload)
@@ -143,13 +289,23 @@ export function SearchTab({ tabId }: { tabId: string }) {
   }, [query, filters])
 
   const buildBaseParams = (): { bookGroup?: string; bookCodes?: string[] } => {
-    const bookGroup = ['gita', 'bhagavatam', 'cc'].includes(filters.bookGroup) ? filters.bookGroup : undefined
-    const bookCodes =
-      rawQuery !== null && advancedBookKeys.length > 0
-        ? advancedBookKeys
-        : filters.bookGroup !== 'all' && !bookGroup
-          ? [filters.bookGroup]
-          : undefined
+    let bookCodes: string[] | undefined = undefined
+    if (rawQuery !== null && advancedBookKeys.length > 0) {
+      bookCodes = advancedBookKeys
+    } else if (filters.bookCodes !== undefined) {
+      if (filters.bookCodes.length === 0) {
+        bookCodes = ['__none__']
+      } else if (filters.bookCodes.length < books.length) {
+        bookCodes = filters.bookCodes
+      }
+    } else if (filters.bookGroup && filters.bookGroup !== 'all') {
+      const isKnownGroup = ['gita', 'bhagavatam', 'cc'].includes(filters.bookGroup)
+      if (!isKnownGroup) {
+        bookCodes = [filters.bookGroup]
+      }
+    }
+    const bookGroup =
+      filters.bookGroup && ['gita', 'bhagavatam', 'cc'].includes(filters.bookGroup) ? filters.bookGroup : undefined
     return { bookGroup, bookCodes }
   }
 
@@ -348,23 +504,11 @@ export function SearchTab({ tabId }: { tabId: string }) {
               <X size={15} />
             </button>
           )}
-          <select
-            value={filters.bookGroup}
-            onChange={(e) => setFilters((f) => ({ ...f, bookGroup: e.target.value }))}
-            className="bg-neutral-900 border border-neutral-800 rounded-md px-2 py-1.5 text-xs text-neutral-300"
-          >
-            <option value="all">All Books (A-Z)</option>
-            <option value="gita">Bhagavad-gītā</option>
-            <option value="bhagavatam">Śrīmad-Bhāgavatam</option>
-            <option value="cc">Caitanya-caritāmṛta</option>
-            {[...books]
-              .sort((a, b) => (a.title ?? a.bookKey).localeCompare(b.title ?? b.bookKey))
-              .map((b) => (
-                <option key={b.bookKey} value={b.bookKey}>
-                  {b.title ?? b.bookKey}
-                </option>
-              ))}
-          </select>
+          <BookMultiSelectDropdown
+            books={books}
+            selectedKeys={filters.bookCodes}
+            onChange={(selected) => setFilters((f) => ({ ...f, bookCodes: selected }))}
+          />
           <button
             type="button"
             onClick={() => setAdvancedOpen(true)}

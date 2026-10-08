@@ -200,7 +200,7 @@ Press **`Alt + S`** to cycle through comparative study modes:
 
 ## 9. In-App PDF Reader
 
-For scanned historical manuscripts and commentaries (such as *Bhakti-rasāmṛta-sindhu Subhodinī* or user-imported PDF documents):
+For scanned historical manuscripts, commentaries, and imported PDF documents:
 - **Vector Canvas Rendering**: Crystal-clear high-DPI text and illustrations.
 - **Page Jump**: Type any page number into the `[ 1 ] / N` box and hit `Enter`.
 - **Zoom Modes**: Fit Width, Fit Page, 50%–200% scale presets, or `Ctrl + MouseWheel`.

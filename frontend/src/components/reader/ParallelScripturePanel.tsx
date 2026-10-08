@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, NotebookPen, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, NotebookPen, X, Search } from 'lucide-react'
 
 import { getChapterRecords, getVerseRecord } from '../../services/api'
 import { resolveDirectReference } from '../../services/directReference'
+import { useNavigationStore } from '../../stores/useNavigationStore'
+import { useReaderStore } from '../../stores/useReaderStore'
 import { deriveNavigationTarget } from '../../utils/recordKey'
 import { splitPurportParagraphs } from './textUtils'
 import { classifyPurportParagraph } from './purportFormatting'
@@ -22,7 +24,6 @@ function resolvePurportInfo(record: VerseRecord, recIdx: number, allRecords: Ver
   }
 
   // Check if this verse is part of a multi-verse range (e.g. BG 1.4-6 where 1.4 carries the purport)
-  // Only borrow if a preceding record explicitly has a range in its reference covering this text.
   for (let j = recIdx - 1; j >= Math.max(0, recIdx - 5); j--) {
     const prev = allRecords[j]
     if (prev?.purports && prev.purports.trim()) {
@@ -50,10 +51,11 @@ function resolvePurportInfo(record: VerseRecord, recIdx: number, allRecords: Ver
   return { text: null, isGrouped: false, sourceRef: null, note: null }
 }
 
-/** v2's Split View "Parallel Scripture" mode — a self-contained, read-only
- * scripture comparison panel independent of the main reader's tab state.
- * Supports continuous chapter scrolling with auto-jump to the searched verse,
- * full purport paragraph formatting, citations, and navigation. */
+/**
+ * Split View "Parallel Scripture" mode — matching the main reader's typography,
+ * font sizes, and presentation while offering independent verse/chapter navigation
+ * and side-by-side comparative scripture study.
+ */
 export function ParallelScripturePanel({
   initialRecordKey,
   onSwitchMode,
@@ -63,6 +65,15 @@ export function ParallelScripturePanel({
   onSwitchMode: () => void
   onClose: () => void
 }) {
+  const showSanskrit = useReaderStore((s) => s.showSanskrit)
+  const showTransliteration = useReaderStore((s) => s.showTransliteration)
+  const showSynonyms = useReaderStore((s) => s.showSynonyms)
+  const showTranslation = useReaderStore((s) => s.showTranslation)
+  const showPurport = useReaderStore((s) => s.showPurport)
+
+  const books = useNavigationStore((s) => s.books)
+  const loadBooks = useNavigationStore((s) => s.loadBooks)
+
   const [input, setInput] = useState('')
   const [siblings, setSiblings] = useState<VerseRecord[]>([])
   const [index, setIndex] = useState(0)
@@ -71,6 +82,10 @@ export function ParallelScripturePanel({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const verseRefs = useRef<Map<string, HTMLElement>>(new Map())
+
+  useEffect(() => {
+    if (books.length === 0) void loadBooks()
+  }, [books.length, loadBooks])
 
   const loadReference = async (query: string) => {
     const trimmed = query.trim()
@@ -138,15 +153,18 @@ export function ParallelScripturePanel({
     <div className="flex flex-col min-h-0 h-full w-full overflow-hidden bg-neutral-950">
       {/* Top Search & Navigation Bar */}
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-neutral-800 shrink-0 bg-neutral-900/60">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void loadReference(input)
-          }}
-          placeholder="Compare verse e.g. BG 2.13, SB 4.6.9…"
-          className="flex-1 min-w-0 bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1.5 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:border-amber-500/50"
-        />
+        <div className="relative flex-1 min-w-0">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500" />
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void loadReference(input)
+            }}
+            placeholder="Compare verse e.g. BG 2.13, SB 4.6.9…"
+            className="w-full bg-neutral-900 border border-neutral-800 rounded-md pl-8 pr-2.5 py-1.5 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:border-amber-500/50"
+          />
+        </div>
 
         {siblings.length > 0 && (
           <div className="flex items-center gap-0.5 shrink-0">
@@ -192,10 +210,12 @@ export function ParallelScripturePanel({
         </button>
       </div>
 
-      {/* Main Continuous Verse Scroll Container */}
+      {/* Scripture View Body (Continuous Layout Matching Main Reader) */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-4 py-4 pb-40 space-y-8"
+        tabIndex={0}
+        aria-label="Parallel scripture reader"
+        className="flex-1 overflow-y-auto px-6 py-6 scrollbar-thin focus:outline-none"
       >
         {loading && (
           <div className="flex items-center justify-center py-12 text-sm text-neutral-500">
@@ -211,11 +231,12 @@ export function ParallelScripturePanel({
 
         {!loading && !error && siblings.length === 0 && (
           <div className="text-center py-16 px-4">
-            <p className="text-sm font-medium text-neutral-400 mb-1">Parallel Scripture View</p>
-            <p className="text-xs text-neutral-600 leading-relaxed">
-              Enter a scripture reference above (e.g. <span className="text-amber-500/80 font-mono">SB 4.6.9</span>,{' '}
-              <span className="text-amber-500/80 font-mono">BG 2.13</span>,{' '}
-              <span className="text-amber-500/80 font-mono">CC Adi 1.1</span>) to compare texts side-by-side.
+            <p className="text-sm font-medium text-neutral-300 mb-1">Parallel Scripture View</p>
+            <p className="text-xs text-neutral-500 leading-relaxed max-w-sm mx-auto">
+              Enter any scripture reference above (e.g.{' '}
+              <span className="text-amber-400 font-mono">BG 2.13</span>,{' '}
+              <span className="text-amber-400 font-mono">SB 1.1.1</span>,{' '}
+              <span className="text-amber-400 font-mono">CC Adi 1.1</span>) to read and compare side-by-side with identical reader typography.
             </p>
           </div>
         )}
@@ -235,83 +256,98 @@ export function ParallelScripturePanel({
                 }}
                 id={`parallel-${record.recordKey}`}
                 onClick={() => setIndex(i)}
-                className={`rounded-lg border p-4 transition-colors ${
-                  isActive
-                    ? 'border-amber-500/50 bg-amber-500/[0.03] shadow-md ring-1 ring-amber-500/20'
-                    : 'border-neutral-800/70 bg-neutral-900/30 hover:border-neutral-700'
+                className={`pb-8 mb-8 border-b border-neutral-800/60 last:border-b-0 transition-opacity ${
+                  isActive ? 'opacity-100' : 'opacity-85 hover:opacity-100'
                 }`}
               >
                 {/* Verse Citation Header */}
-                <div className="flex items-center justify-between pb-3 mb-3 border-b border-neutral-800/60">
-                  <span className="text-sm font-semibold text-amber-400 tracking-wide">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-amber-500/90 tracking-wide">
                     {record.reference ?? record.recordKey}
                   </span>
                   {isActive && (
                     <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                      Active
+                      Current
                     </span>
                   )}
                 </div>
 
                 {/* Devanagari */}
-                {record.devanagari && (
-                  <p className="text-base text-center text-amber-100/90 leading-relaxed font-serif my-3" lang="sa">
+                {showSanskrit && record.devanagari && (
+                  <div
+                    data-field="devanagari"
+                    lang="sa"
+                    className="font-devanagari leading-loose text-center text-amber-100/90 whitespace-pre-line mb-3"
+                    style={{ fontSize: 'var(--font-size-devanagari, 1.25rem)' }}
+                  >
                     {record.devanagari}
-                  </p>
+                  </div>
                 )}
 
                 {/* Transliteration */}
-                {record.transliteration && (
-                  <p className="text-xs italic text-neutral-400 text-center leading-relaxed my-3">
+                {showTransliteration && record.transliteration && (
+                  <div
+                    data-field="transliteration"
+                    className="font-scripture italic leading-relaxed text-center text-neutral-300 whitespace-pre-line mb-4"
+                    style={{ fontSize: 'var(--font-size-translit, 1.05rem)' }}
+                  >
                     {record.transliteration}
-                  </p>
+                  </div>
                 )}
 
                 {/* Synonyms */}
-                {record.synonyms && (
-                  <div className="my-3">
+                {showSynonyms && record.synonyms && (
+                  <div
+                    data-field="synonyms"
+                    className="text-neutral-300 leading-relaxed mb-4 text-justify"
+                    style={{ fontSize: 'var(--font-size-translation, 1rem)' }}
+                  >
                     <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-1">
                       Synonyms
                     </div>
-                    <p className="text-xs text-neutral-300 leading-relaxed">
-                      {renderWithCitations(record.synonyms)}
-                    </p>
+                    {renderWithCitations(record.synonyms)}
                   </div>
                 )}
 
                 {/* Translation */}
-                {record.translation && (
-                  <div className="my-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-1">
+                {showTranslation && record.translation && (
+                  <div
+                    data-field="translation"
+                    className="font-medium text-neutral-100 leading-relaxed mb-4 pl-3 border-l-2 border-amber-500/60 text-justify"
+                    style={{ fontSize: 'var(--font-size-translation, 1.05rem)' }}
+                  >
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-500/70 mb-1">
                       Translation
                     </div>
-                    <blockquote className="border-l-2 border-amber-500/70 pl-3 py-1 text-sm font-medium text-neutral-200 leading-relaxed bg-amber-500/5 rounded-r">
-                      {renderWithCitations(record.translation)}
-                    </blockquote>
+                    {renderWithCitations(record.translation)}
                   </div>
                 )}
 
                 {/* Purport */}
-                <div className="mt-4 pt-3 border-t border-neutral-800/50">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-2">
-                    Purport
-                  </div>
-
-                  {purportInfo.sourceRef && (
-                    <div className="text-[11px] text-amber-500/80 italic mb-2">
-                      (Purport from combined verse {purportInfo.sourceRef})
+                {showPurport && (
+                  <div
+                    data-field="purport"
+                    className="text-neutral-200 leading-relaxed space-y-3 text-justify mt-4 pt-3 border-t border-neutral-800/40"
+                    style={{ fontSize: 'var(--font-size-purport, 1rem)' }}
+                  >
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-2">
+                      Purport
                     </div>
-                  )}
 
-                  {paragraphs.length > 0 ? (
-                    <div className="space-y-3">
-                      {paragraphs.map((p, pIdx) => {
+                    {purportInfo.sourceRef && (
+                      <div className="text-[11px] text-amber-500/80 italic mb-2">
+                        (Purport from combined verse {purportInfo.sourceRef})
+                      </div>
+                    )}
+
+                    {paragraphs.length > 0 ? (
+                      paragraphs.map((p, pIdx) => {
                         const classification = classifyPurportParagraph(p)
                         if (classification.kind === 'verse') {
                           return (
                             <div
                               key={pIdx}
-                              className="text-xs font-serif italic text-amber-200/90 pl-3 border-l-2 border-amber-500/40 my-2 whitespace-pre-line bg-amber-500/5 py-1 rounded-r"
+                              className="font-scripture italic text-amber-200/90 pl-3 border-l-2 border-amber-500/40 my-3 whitespace-pre-line bg-amber-500/5 py-1.5 rounded-r"
                             >
                               {renderWithCitations(p)}
                             </div>
@@ -321,60 +357,29 @@ export function ParallelScripturePanel({
                           return (
                             <h4
                               key={pIdx}
-                              className="text-xs font-bold text-amber-400 mt-3 mb-1 uppercase tracking-wider"
+                              className="font-bold text-amber-400 mt-4 mb-1 uppercase tracking-wider text-sm"
                             >
                               {renderWithCitations(p)}
                             </h4>
                           )
                         }
                         return (
-                          <p key={pIdx} className="text-xs text-neutral-300 leading-relaxed">
+                          <p key={pIdx} className="leading-relaxed">
                             {renderWithCitations(p)}
                           </p>
                         )
-                      })}
-                    </div>
-                  ) : purportInfo.note ? (
-                    <p className="text-xs italic text-neutral-400 py-1 bg-neutral-900/40 border border-neutral-800/60 rounded px-2.5">
-                      {purportInfo.note}
-                    </p>
-                  ) : (
-                    <p className="text-xs italic text-neutral-500 py-1">
-                      No separate purport for this verse in the original corpus.
-                    </p>
-                  )}
-                </div>
-
-                {/* Card Quick-Jump Navigation Footer */}
-                <div className="flex items-center justify-between pt-3 mt-4 border-t border-neutral-800/40 text-[11px]">
-                  {i > 0 ? (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        scrollToVerse(i - 1)
-                      }}
-                      className="flex items-center gap-1 text-neutral-500 hover:text-amber-400 transition-colors"
-                    >
-                      <ChevronLeft size={13} /> {siblings[i - 1].reference ?? siblings[i - 1].recordKey}
-                    </button>
-                  ) : (
-                    <span />
-                  )}
-
-                  {i < siblings.length - 1 && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        scrollToVerse(i + 1)
-                      }}
-                      className="flex items-center gap-1 text-neutral-500 hover:text-amber-400 transition-colors"
-                    >
-                      {siblings[i + 1].reference ?? siblings[i + 1].recordKey} <ChevronRight size={13} />
-                    </button>
-                  )}
-                </div>
+                      })
+                    ) : purportInfo.note ? (
+                      <p className="italic text-neutral-400 py-1 bg-neutral-900/40 border border-neutral-800/60 rounded px-2.5">
+                        {purportInfo.note}
+                      </p>
+                    ) : (
+                      <p className="italic text-neutral-500 py-1">
+                        No separate purport for this verse in the original corpus.
+                      </p>
+                    )}
+                  </div>
+                )}
               </article>
             )
           })}
